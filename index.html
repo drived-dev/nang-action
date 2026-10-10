@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thai Shadow Puppet - Active Pivot Always On Top</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #f8fafc;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+
+<body class="flex h-screen w-screen overflow-hidden bg-slate-50 text-slate-800">
+
+    <!-- Canvas Area -->
+    <div class="relative flex-1 h-full bg-slate-100 overflow-hidden">
+        <canvas id="stageCanvas"></canvas>
+
+        <!-- Controls Overlay -->
+        <div
+            class="absolute top-4 left-4 bg-white/90 backdrop-blur border border-slate-200 p-4 rounded-xl shadow-md text-xs space-y-2 max-w-xs">
+            <h3 class="font-bold text-slate-700 text-sm border-b border-slate-200 pb-1 mb-2">🎮 การควบคุม (Controls)
+            </h3>
+            <div><span class="font-semibold bg-slate-200 px-1.5 py-0.5 rounded border border-slate-300">W A S D</span> :
+                เคลื่อนที่ลอยตัว</div>
+            <div><span class="font-semibold bg-slate-200 px-1.5 py-0.5 rounded border border-slate-300">← ↑ → ↓</span> :
+                เล็งทิศทางแขน/ดาบ 360°</div>
+            <div><span class="font-semibold bg-slate-200 px-1.5 py-0.5 rounded border border-slate-300">Spacebar</span>
+                : ฟันดาบ (Attack Swing)</div>
+            <div><span class="font-semibold bg-slate-200 px-1.5 py-0.5 rounded border border-slate-300">Mouse
+                    Scroll</span> : ย่อ-ขยายขนาดตัวละคร</div>
+            <div class="pt-2 border-t border-slate-200 text-blue-600 font-medium">
+                * หมุด Pivot สีฟ้าของชิ้นส่วนที่เลือกจะแสดงอยู่หน้าสุดทับทุก Layer เสมอ
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Side Panel: Rigging & Joint Adjuster -->
+    <div class="w-80 h-full bg-white border-l border-slate-200 shadow-xl flex flex-col z-10">
+        <!-- Header -->
+        <div class="p-4 border-b border-slate-200 bg-slate-50">
+            <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                ⚙️ ปรับแต่ง Joint & Pivot
+            </h2>
+            <p class="text-xs text-slate-500 mt-1">ปรับพิกัด จุดหมุน และลำดับหน้า-หลัง (Z-Index)</p>
+        </div>
+
+        <!-- Controls Form -->
+        <div class="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
+            <!-- Select Joint -->
+            <div>
+                <label class="block font-semibold text-slate-700 mb-1">เลือกชิ้นส่วน (Select Component):</label>
+                <select id="jointSelect"
+                    class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="upper_body">ลำตัวบน (upper_body)</option>
+                    <option value="head">หัว (head)</option>
+                    <option value="lower_body">ลำตัวล่าง (lower_body)</option>
+                    <option value="right_upper_arm">แขนขวาท่อนบน (right_upper_arm)</option>
+                    <option value="right_arm">แขนขวาท่อนล่าง (right_arm)</option>
+                    <option value="right_hand">มือขวา (right_hand)</option>
+                    <option value="sword">ดาบ (sword)</option>
+                    <option value="left_upper_arm">แขนซ้ายท่อนบน (left_upper_arm)</option>
+                    <option value="left_arm">แขนซ้ายท่อนล่าง (left_arm)</option>
+                    <option value="left_hand">มือซ้าย (left_hand)</option>
+                    <option value="right_leg">ขาขวาท่อนบน (right_leg)</option>
+                    <option value="right_foot">เท้าขวา (right_foot)</option>
+                    <option value="left_leg">ขาซ้ายท่อนบน (left_leg)</option>
+                    <option value="left_foot">เท้าซ้าย (left_foot)</option>
+                </select>
+            </div>
+
+            <!-- Joint Settings Box -->
+            <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-3">
+                <!-- Z-Index Layer -->
+                <div class="bg-amber-50 border border-amber-200 p-2 rounded-md">
+                    <div class="flex justify-between font-medium text-amber-900 mb-1">
+                        <span>ลำดับ Layer หน้า-หลัง (Z-Index):</span>
+                        <span id="val_zIndex" class="text-amber-700 font-bold">0</span>
+                    </div>
+                    <input type="range" id="slider_zIndex" min="0" max="100" value="0"
+                        class="w-full accent-amber-600 h-1.5 bg-amber-200 rounded-lg cursor-pointer">
+                </div>
+
+                <!-- Offset X -->
+                <div>
+                    <div class="flex justify-between font-medium text-slate-600 mb-1">
+                        <span>Offset X (ตำแหน่งข้อต่อ):</span>
+                        <span id="val_x" class="text-blue-600 font-bold">0</span>
+                    </div>
+                    <input type="range" id="slider_x" min="-200" max="200" value="0"
+                        class="w-full accent-blue-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer">
+                </div>
+
+                <!-- Offset Y -->
+                <div>
+                    <div class="flex justify-between font-medium text-slate-600 mb-1">
+                        <span>Offset Y (ตำแหน่งข้อต่อ):</span>
+                        <span id="val_y" class="text-blue-600 font-bold">0</span>
+                    </div>
+                    <input type="range" id="slider_y" min="-200" max="200" value="0"
+                        class="w-full accent-blue-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer">
+                </div>
+
+                <!-- Pivot X -->
+                <div class="bg-blue-50 border border-blue-200 p-2 rounded-md">
+                    <div class="flex justify-between font-medium text-blue-900 mb-1">
+                        <span>Pivot X (ขยับรูปแนวขวาง):</span>
+                        <span id="val_pivotX" class="text-blue-700 font-bold">0</span>
+                    </div>
+                    <input type="range" id="slider_pivotX" min="-200" max="200" value="0"
+                        class="w-full accent-blue-600 h-1.5 bg-blue-200 rounded-lg cursor-pointer">
+                </div>
+
+                <!-- Pivot Y -->
+                <div class="bg-blue-50 border border-blue-200 p-2 rounded-md">
+                    <div class="flex justify-between font-medium text-blue-900 mb-1">
+                        <span>Pivot Y (ขยับรูปแนวดิ่ง):</span>
+                        <span id="val_pivotY" class="text-blue-700 font-bold">0</span>
+                    </div>
+                    <input type="range" id="slider_pivotY" min="-200" max="200" value="0"
+                        class="w-full accent-blue-600 h-1.5 bg-blue-200 rounded-lg cursor-pointer">
+                </div>
+
+                <!-- Angle Offset -->
+                <div>
+                    <div class="flex justify-between font-medium text-slate-600 mb-1">
+                        <span>Rotation (°):</span>
+                        <span id="val_rotation" class="text-blue-600 font-bold">0</span>
+                    </div>
+                    <input type="range" id="slider_rotation" min="-180" max="180" value="0"
+                        class="w-full accent-blue-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer">
+                </div>
+            </div>
+
+            <!-- Global Scale Slider -->
+            <div class="bg-blue-50 border border-blue-100 rounded-lg p-3">
+                <div class="flex justify-between font-medium text-blue-800 mb-1">
+                    <span>ขนาดรวมตัวละคร (Overall Scale):</span>
+                    <span id="val_scale" class="font-bold">0.50x</span>
+                </div>
+                <input type="range" id="slider_scale" min="0.1" max="1.5" step="0.01" value="0.5"
+                    class="w-full accent-blue-600 h-1.5 bg-blue-200 rounded-lg cursor-pointer">
+            </div>
+
+            <!-- Red Joint Markers Toggle -->
+            <div class="flex items-center justify-between p-2 bg-slate-50 border border-slate-200 rounded-lg">
+                <span class="font-medium text-slate-700">แสดงจุดข้อต่อ (Show Joints)</span>
+                <input type="checkbox" id="chkJoints" checked
+                    class="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer">
+            </div>
+
+            <!-- Actions -->
+            <div class="pt-2 space-y-2">
+                <button id="btnResetCurrent"
+                    class="w-full py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium rounded-lg transition-colors">
+                    🔄 รีเซ็ต Joint ที่เลือก
+                </button>
+                <button id="btnExportJSON"
+                    class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2">
+                    📋 Export / คัดลอก JSON
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div id="exportModal"
+        class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-lg w-full p-6 space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+                <h3 class="text-base font-bold text-slate-800">📄 JSON Structure (โครงสร้าง Joint ล่าสุด)</h3>
+                <button id="btnCloseModal"
+                    class="text-slate-400 hover:text-slate-600 font-bold text-lg">&times;</button>
+            </div>
+            <p class="text-xs text-slate-500">คัดลอกข้อความ JSON ด้านล่างนี้ไปวางทับตัวแปร <code
+                    class="bg-slate-100 px-1 py-0.5 rounded text-blue-600 font-mono">DEFAULT_JOINTS</code> ในโค้ด HTML
+                ได้เลยครับ:</p>
+            <textarea id="jsonOutput" readonly
+                class="w-full h-60 bg-slate-900 text-emerald-400 font-mono text-xs p-3 rounded-lg border border-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 selection:bg-emerald-800 selection:text-white"></textarea>
+            <div class="flex justify-end gap-2">
+                <button id="btnCopyModalText"
+                    class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs rounded-lg shadow transition-colors flex items-center gap-1.5">
+                    ✅ คัดลอกไปยัง Clipboard
+                </button>
+                <button id="btnCloseModalBtn"
+                    class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium text-xs rounded-lg transition-colors">
+                    ปิด
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. CONFIG & INITIAL JOINT DATA ---
+        const DEFAULT_JOINTS = {
+        "upper_body": {
+            "x": 0,
+                "y": 0,
+                    "pivotX": 0,
+                        "pivotY": 0,
+                            "rotation": 0,
+                                "zIndex": 70
+        },
+        "head": {
+            "x": 0,
+                "y": -101,
+                    "pivotX": 38,
+                        "pivotY": -93,
+                            "rotation": 0,
+                                "zIndex": 80
+        },
+        "lower_body": {
+            "x": 0,
+                "y": 154,
+                    "pivotX": 0,
+                        "pivotY": 0,
+                            "rotation": 0,
+                                "zIndex": 82
+        },
+        "right_upper_arm": {
+            "x": 95,
+                "y": -4,
+                    "pivotX": 35,
+                        "pivotY": 24,
+                            "rotation": 0,
+                                "zIndex": 30
+        },
+        "right_arm": {
+            "x": 78,
+                "y": 71,
+                    "pivotX": 55,
+                        "pivotY": -18,
+                            "rotation": -9,
+                                "zIndex": 40
+        },
+        "sword": {
+            "x": 34,
+                "y": 4,
+                    "pivotX": -8,
+                        "pivotY": -178,
+                            "rotation": 16,
+                                "zIndex": 50
+        },
+        "right_hand": {
+            "x": 108,
+                "y": -44,
+                    "pivotX": 24,
+                        "pivotY": 3,
+                            "rotation": 0,
+                                "zIndex": 60
+        },
+        "left_upper_arm": {
+            "x": -87,
+                "y": -5,
+                    "pivotX": -45,
+                        "pivotY": 4,
+                            "rotation": 0,
+                                "zIndex": 20
+        },
+        "left_arm": {
+            "x": -104,
+                "y": 24,
+                    "pivotX": -39,
+                        "pivotY": 38,
+                            "rotation": 0,
+                                "zIndex": 21
+        },
+        "left_hand": {
+            "x": -78,
+                "y": 88,
+                    "pivotX": 1,
+                        "pivotY": 24,
+                            "rotation": 0,
+                                "zIndex": 22
+        },
+        "right_leg": {
+            "x": 50,
+                "y": -1,
+                    "pivotX": 27,
+                        "pivotY": 25,
+                            "rotation": 0,
+                                "zIndex": 13
+        },
+        "right_foot": {
+            "x": 65,
+                "y": 70,
+                    "pivotX": 49,
+                        "pivotY": 62,
+                            "rotation": 0,
+                                "zIndex": 14
+        },
+        "left_leg": {
+            "x": -70,
+                "y": 3,
+                    "pivotX": -7,
+                        "pivotY": 28,
+                            "rotation": 0,
+                                "zIndex": 11
+        },
+        "left_foot": {
+            "x": -36,
+                "y": 80,
+                    "pivotX": -19,
+                        "pivotY": 75,
+                            "rotation": 0,
+                                "zIndex": 12
+        }
+        };
+
+        const SCENE_GRAPH = {
+            upper_body: { parent: null },
+            head: { parent: 'upper_body' },
+            lower_body: { parent: 'upper_body' },
+            left_leg: { parent: 'lower_body' },
+            left_foot: { parent: 'left_leg' },
+            right_leg: { parent: 'lower_body' },
+            right_foot: { parent: 'right_leg' },
+            left_upper_arm: { parent: 'upper_body' },
+            left_arm: { parent: 'left_upper_arm' },
+            left_hand: { parent: 'left_arm' },
+            right_upper_arm: { parent: 'upper_body' },
+            right_arm: { parent: 'right_upper_arm' },
+            right_hand: { parent: 'right_arm' },
+            sword: { parent: 'right_hand' }
+        };
+
+        let joints = JSON.parse(JSON.stringify(DEFAULT_JOINTS));
+
+        let character = {
+            x: window.innerWidth / 2 - 160,
+            y: window.innerHeight / 2,
+            scale: 0.5,
+            swordAngle: 0,
+            targetSwordAngle: 0,
+            isSlashing: false,
+            slashTimer: 0
+        };
+
+        let keys = {};
+        let showJoints = true;
+        let selectedJointKey = 'upper_body';
+
+        const componentNames = Object.keys(DEFAULT_JOINTS);
+        const images = {};
+        let loadedCount = 0;
+
+        componentNames.forEach(name => {
+            const img = new Image();
+            img.src = `Body_Component/${name}.png`;
+            img.onload = () => { loadedCount++; };
+            images[name] = img;
+        });
+
+        // --- 2. CANVAS SETUP ---
+        const canvas = document.getElementById('stageCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth - 320;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // --- 3. UI SYNC ENGINE ---
+        const jointSelect = document.getElementById('jointSelect');
+        const sliderX = document.getElementById('slider_x');
+        const sliderY = document.getElementById('slider_y');
+        const sliderPivotX = document.getElementById('slider_pivotX');
+        const sliderPivotY = document.getElementById('slider_pivotY');
+        const sliderRotation = document.getElementById('slider_rotation');
+        const sliderZIndex = document.getElementById('slider_zIndex');
+        const sliderScale = document.getElementById('slider_scale');
+
+        const valX = document.getElementById('val_x');
+        const valY = document.getElementById('val_y');
+        const valPivotX = document.getElementById('val_pivotX');
+        const valPivotY = document.getElementById('val_pivotY');
+        const valRotation = document.getElementById('val_rotation');
+        const valZIndex = document.getElementById('val_zIndex');
+        const valScale = document.getElementById('val_scale');
+        const chkJoints = document.getElementById('chkJoints');
+
+        function syncUIFromJoint(key) {
+            selectedJointKey = key;
+            const j = joints[key];
+            if (!j) return;
+
+            sliderX.value = j.x;
+            valX.textContent = j.x;
+
+            sliderY.value = j.y;
+            valY.textContent = j.y;
+
+            sliderPivotX.value = j.pivotX;
+            valPivotX.textContent = j.pivotX;
+
+            sliderPivotY.value = j.pivotY;
+            valPivotY.textContent = j.pivotY;
+
+            sliderRotation.value = j.rotation;
+            valRotation.textContent = j.rotation + '°';
+
+            sliderZIndex.value = j.zIndex || 0;
+            valZIndex.textContent = j.zIndex || 0;
+        }
+
+        function updateJointFromUI() {
+            const j = joints[selectedJointKey];
+            if (!j) return;
+
+            j.x = parseInt(sliderX.value);
+            j.y = parseInt(sliderY.value);
+            j.pivotX = parseInt(sliderPivotX.value);
+            j.pivotY = parseInt(sliderPivotY.value);
+            j.rotation = parseInt(sliderRotation.value);
+            j.zIndex = parseInt(sliderZIndex.value);
+
+            valX.textContent = j.x;
+            valY.textContent = j.y;
+            valPivotX.textContent = j.pivotX;
+            valPivotY.textContent = j.pivotY;
+            valRotation.textContent = j.rotation + '°';
+            valZIndex.textContent = j.zIndex;
+        }
+
+        jointSelect.addEventListener('change', (e) => syncUIFromJoint(e.target.value));
+        [sliderX, sliderY, sliderPivotX, sliderPivotY, sliderRotation, sliderZIndex].forEach(elem => {
+            elem.addEventListener('input', updateJointFromUI);
+        });
+
+        sliderScale.addEventListener('input', (e) => {
+            character.scale = parseFloat(e.target.value);
+            valScale.textContent = character.scale.toFixed(2) + 'x';
+        });
+
+        chkJoints.addEventListener('change', (e) => {
+            showJoints = e.target.checked;
+        });
+
+        document.getElementById('btnResetCurrent').addEventListener('click', () => {
+            if (DEFAULT_JOINTS[selectedJointKey]) {
+                joints[selectedJointKey] = JSON.parse(JSON.stringify(DEFAULT_JOINTS[selectedJointKey]));
+                syncUIFromJoint(selectedJointKey);
+            }
+        });
+
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            character.scale += e.deltaY * -0.001;
+            character.scale = Math.min(Math.max(0.1, character.scale), 1.5);
+            sliderScale.value = character.scale;
+            valScale.textContent = character.scale.toFixed(2) + 'x';
+        }, { passive: false });
+
+        syncUIFromJoint(selectedJointKey);
+
+        // --- 4. EXPORT & MODAL ---
+        const exportModal = document.getElementById('exportModal');
+        const jsonOutput = document.getElementById('jsonOutput');
+
+        document.getElementById('btnExportJSON').addEventListener('click', () => {
+            const jsonText = JSON.stringify(joints, null, 4);
+            jsonOutput.value = jsonText;
+            exportModal.classList.remove('hidden');
+            tryCopyText(jsonText);
+        });
+
+        function closeModal() {
+            exportModal.classList.add('hidden');
+        }
+
+        document.getElementById('btnCloseModal').addEventListener('click', closeModal);
+        document.getElementById('btnCloseModalBtn').addEventListener('click', closeModal);
+        document.getElementById('btnCopyModalText').addEventListener('click', () => {
+            tryCopyText(jsonOutput.value);
+        });
+
+        function tryCopyText(text) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => {
+                    alert('✅ คัดลอก JSON เรียบร้อยแล้ว!');
+                }).catch(() => fallbackCopy(text));
+            } else {
+                fallbackCopy(text);
+            }
+        }
+
+        function fallbackCopy(text) {
+            jsonOutput.select();
+            jsonOutput.setSelectionRange(0, 99999);
+            try {
+                document.execCommand('copy');
+                alert('✅ คัดลอก JSON เรียบร้อยแล้ว!');
+            } catch (err) {
+                alert('ไม่สามารถคัดลอกอัตโนมัติได้ กรุณากด Ctrl+C บนข้อความในกล่องครับ');
+            }
+        }
+
+        // --- 5. KEYBOARD INPUTS ---
+        window.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
+            keys[e.key] = true;
+            if (e.code === 'Space') {
+                character.isSlashing = true;
+                character.slashTimer = 10;
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            keys[e.key.toLowerCase()] = false;
+            keys[e.key] = false;
+        });
+
+        // --- 6. 2D MATRIX MATH HELPERS ---
+        function multiplyMatrix(m1, m2) {
+            return [
+                m1[0] * m2[0] + m1[2] * m2[1],
+                m1[1] * m2[0] + m1[3] * m2[1],
+                m1[0] * m2[2] + m1[2] * m2[3],
+                m1[1] * m2[2] + m1[3] * m2[3],
+                m1[0] * m2[4] + m1[2] * m2[5] + m1[4],
+                m1[1] * m2[4] + m1[3] * m2[5] + m1[5]
+            ];
+        }
+
+        function createTransformMatrix(x, y, rotationDegrees) {
+            const rad = (rotationDegrees * Math.PI) / 180;
+            const cos = Math.cos(rad);
+            const sin = Math.sin(rad);
+            return [cos, sin, -sin, cos, x, y];
+        }
+
+        function getLocalMatrix(name) {
+            const j = joints[name] || { x: 0, y: 0, rotation: 0 };
+            let extraRot = 0;
+
+            if (name === 'right_upper_arm') {
+                extraRot += character.swordAngle;
+                if (character.isSlashing) {
+                    extraRot += Math.sin(character.slashTimer * 0.5) * 45;
+                }
+            }
+            return createTransformMatrix(j.x, j.y, j.rotation + extraRot);
+        }
+
+        // --- 7. SCENE GRAPH & LAYERED RENDER ENGINE ---
+        function drawBackgroundGrid() {
+            ctx.fillStyle = '#f1f5f9';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = '#cbd5e1';
+            const gridSize = 30;
+            for (let x = 15; x < canvas.width; x += gridSize) {
+                for (let y = 15; y < canvas.height; y += gridSize) {
+                    ctx.beginPath();
+                    ctx.arc(x, y, 1.5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+
+        function renderCharacter() {
+            // 1. Calculate World Matrix for all joints
+            const worldTransforms = {};
+
+            function computeWorldTransform(name, parentMatrix) {
+                const localM = getLocalMatrix(name);
+                const worldM = parentMatrix ? multiplyMatrix(parentMatrix, localM) : localM;
+                worldTransforms[name] = worldM;
+
+                for (const [childName, config] of Object.entries(SCENE_GRAPH)) {
+                    if (config.parent === name) {
+                        computeWorldTransform(childName, worldM);
+                    }
+                }
+            }
+
+            computeWorldTransform('upper_body', null);
+
+            // 2. Sort components by Z-Index (Back to Front)
+            const sortedNames = Object.keys(joints).sort((a, b) => {
+                const zA = joints[a].zIndex || 0;
+                const zB = joints[b].zIndex || 0;
+                return zA - zB;
+            });
+
+            // 3. PASS 1: Render All Images and Unselected Joint Markers
+            sortedNames.forEach(name => {
+                const worldM = worldTransforms[name];
+                if (!worldM) return;
+
+                const j = joints[name] || { pivotX: 0, pivotY: 0 };
+
+                ctx.save();
+                ctx.transform(worldM[0], worldM[1], worldM[2], worldM[3], worldM[4], worldM[5]);
+
+                // Draw Red Marker for Unselected Joints
+                if (showJoints && name !== selectedJointKey) {
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 5, 0, Math.PI * 2);
+                    ctx.fillStyle = '#ef4444';
+                    ctx.fill();
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.stroke();
+                }
+
+                // Draw Component Image Offsetted by Pivot
+                ctx.save();
+                ctx.translate(j.pivotX, j.pivotY);
+
+                const img = images[name];
+                if (img && img.complete && img.naturalWidth !== 0) {
+                    ctx.drawImage(img, -img.width / 2, -img.height / 2);
+                } else {
+                    drawProceduralFallback(name);
+                }
+                ctx.restore();
+
+                ctx.restore();
+            });
+
+            // 4. PASS 2: ALWAYS DRAW SELECTED ACTIVE JOINT PIVOT ON TOP OF EVERYTHING
+            if (showJoints && selectedJointKey && worldTransforms[selectedJointKey]) {
+                const worldM = worldTransforms[selectedJointKey];
+
+                ctx.save();
+                ctx.transform(worldM[0], worldM[1], worldM[2], worldM[3], worldM[4], worldM[5]);
+
+                // Active Blue Center Point
+                ctx.beginPath();
+                ctx.arc(0, 0, 8, 0, Math.PI * 2);
+                ctx.fillStyle = '#3b82f6';
+                ctx.fill();
+                ctx.lineWidth = 2.5;
+                ctx.strokeStyle = '#ffffff';
+                ctx.stroke();
+
+                // Outer Dashed Highlight Ring
+                ctx.beginPath();
+                ctx.arc(0, 0, 15, 0, Math.PI * 2);
+                ctx.strokeStyle = '#3b82f6';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([4, 4]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                ctx.restore();
+            }
+        }
+
+        function drawProceduralFallback(name) {
+            ctx.fillStyle = '#1e293b';
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 3;
+
+            switch (name) {
+                case 'upper_body':
+                    ctx.beginPath();
+                    ctx.moveTo(-25, -60);
+                    ctx.lineTo(25, -60);
+                    ctx.lineTo(35, 20);
+                    ctx.lineTo(-35, 20);
+                    ctx.closePath();
+                    ctx.fill();
+                    break;
+                case 'head':
+                    ctx.beginPath();
+                    ctx.arc(0, -20, 22, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.moveTo(10, -25);
+                    ctx.lineTo(45, -20);
+                    ctx.lineTo(40, -10);
+                    ctx.lineTo(10, -15);
+                    ctx.fill();
+                    break;
+                case 'lower_body':
+                    ctx.beginPath();
+                    ctx.moveTo(-35, 0);
+                    ctx.lineTo(35, 0);
+                    ctx.lineTo(20, 40);
+                    ctx.lineTo(-20, 40);
+                    ctx.closePath();
+                    ctx.fill();
+                    break;
+                case 'right_upper_arm':
+                case 'left_upper_arm':
+                    ctx.beginPath();
+                    ctx.ellipse(25, 0, 25, 10, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    break;
+                case 'right_arm':
+                case 'left_arm':
+                    ctx.beginPath();
+                    ctx.ellipse(20, 0, 20, 8, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    break;
+                case 'right_hand':
+                case 'left_hand':
+                    ctx.beginPath();
+                    ctx.arc(8, 0, 8, 0, Math.PI * 2);
+                    ctx.fill();
+                    break;
+                case 'sword':
+                    ctx.beginPath();
+                    ctx.fillRect(-5, -60, 10, 70);
+                    ctx.fillStyle = '#64748b';
+                    ctx.fillRect(-15, -10, 30, 6);
+                    break;
+                case 'right_leg':
+                case 'left_leg':
+                    ctx.beginPath();
+                    ctx.ellipse(0, 20, 10, 22, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    break;
+                case 'right_foot':
+                case 'left_foot':
+                    ctx.beginPath();
+                    ctx.ellipse(10, 15, 16, 8, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    break;
+            }
+        }
+
+        // --- 8. MAIN LOOP ---
+        function update() {
+            const speed = 5;
+            if (keys['w'] || keys['W']) character.y -= speed;
+            if (keys['s'] || keys['S']) character.y += speed;
+            if (keys['a'] || keys['A']) character.x -= speed;
+            if (keys['d'] || keys['D']) character.x += speed;
+
+            let aimX = 0;
+            let aimY = 0;
+            if (keys['ArrowLeft']) aimX -= 1;
+            if (keys['ArrowRight']) aimX += 1;
+            if (keys['ArrowUp']) aimY -= 1;
+            if (keys['ArrowDown']) aimY += 1;
+
+            if (aimX !== 0 || aimY !== 0) {
+                character.targetSwordAngle = (Math.atan2(aimY, aimX) * 180) / Math.PI;
+            }
+
+            character.swordAngle += (character.targetSwordAngle - character.swordAngle) * 0.2;
+
+            if (character.isSlashing) {
+                character.slashTimer--;
+                if (character.slashTimer <= 0) character.isSlashing = false;
+            }
+        }
+
+        function render() {
+            drawBackgroundGrid();
+
+            ctx.save();
+            ctx.translate(character.x, character.y);
+            ctx.scale(character.scale, character.scale);
+
+            renderCharacter();
+
+            ctx.restore();
+        }
+
+        function loop() {
+            update();
+            render();
+            requestAnimationFrame(loop);
+        }
+
+        loop();
+    </script>
+</body>
+
+</html>
