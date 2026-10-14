@@ -4,14 +4,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Thai Shadow Puppet - Active Pivot Always On Top</title>
+    <title>Thai Shadow Puppet - Classic Arcade Fighting Arena</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=VT323&family=Kanit:wght@800;900&display=swap');
+
         body {
             margin: 0;
             overflow: hidden;
-            background-color: #f8fafc;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #ffffff;
+            font-family: 'Kanit', sans-serif;
             user-select: none;
         }
 
@@ -19,320 +21,150 @@
             display: block;
         }
 
-        ::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: #f1f5f9;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 3px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
+        .pixel-font {
+            font-family: 'VT323', monospace;
         }
     </style>
 </head>
 
-<body class="flex h-screen w-screen overflow-hidden bg-slate-50 text-slate-800">
+<body class="relative h-screen w-screen overflow-hidden bg-white text-slate-900 flex flex-col justify-between">
 
-    <!-- Canvas Area -->
-    <div class="relative flex-1 h-full bg-slate-100 overflow-hidden">
-        <canvas id="stageCanvas"></canvas>
+    <!-- Canvas Fullscreen Stage -->
+    <canvas id="stageCanvas" class="absolute inset-0 w-full h-full z-0"></canvas>
 
-        <!-- Controls Overlay -->
+    <!-- Top Responsive Retro Arcade HUD Header -->
+    <div
+        class="relative z-10 w-full px-4 pt-3 pb-1 sm:px-8 sm:pt-4 md:px-12 flex items-center justify-between gap-3 pointer-events-none">
+
+        <!-- PLAYER 1 HUD (LEFT) -->
+        <div class="flex items-center gap-2 sm:gap-3 flex-1 max-w-[45%] justify-start">
+            <div
+                class="bg-black text-white font-black text-xs sm:text-sm md:text-base px-3 sm:px-5 py-1.5 rounded-full border-2 sm:border-3 border-black tracking-wider shrink-0 shadow-md">
+                CHALAWAN
+            </div>
+            <div
+                class="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full bg-black text-white text-xs sm:text-sm md:text-base font-black flex items-center justify-center shrink-0 border-2 sm:border-3 border-black shadow-md">
+                P1
+            </div>
+            <div
+                class="flex-1 h-7 sm:h-9 md:h-11 bg-black rounded-full p-1 sm:p-1.5 shadow-md border-2 sm:border-3 border-black flex items-center">
+                <div class="w-full h-full bg-white rounded-full p-0.5 overflow-hidden">
+                    <div id="p1HpBar" class="h-full bg-[#facc15] rounded-full transition-all duration-150"
+                        style="width: 100%;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CENTER TIMER & ROUND COUNTER -->
+        <div class="flex flex-col items-center justify-center shrink-0 mx-2">
+            <div
+                class="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 bg-black rounded-full border-3 sm:border-4 border-black flex items-center justify-center text-white font-mono text-2xl sm:text-3xl md:text-4xl font-black shadow-lg pixel-font tracking-tighter">
+                <span id="timerText">60</span>
+            </div>
+            <div class="flex gap-1.5 mt-1 sm:mt-1.5">
+                <span
+                    class="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 rounded-full border-2 sm:border-3 border-black bg-black inline-block shadow-sm"></span>
+                <span
+                    class="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 rounded-full border-2 sm:border-3 border-black bg-white inline-block shadow-sm"></span>
+                <span
+                    class="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 rounded-full border-2 sm:border-3 border-black bg-white inline-block shadow-sm"></span>
+            </div>
+        </div>
+
+        <!-- PLAYER 2 HUD (RIGHT) -->
+        <div class="flex items-center gap-2 sm:gap-3 flex-1 max-w-[45%] justify-end">
+            <div
+                class="flex-1 h-7 sm:h-9 md:h-11 bg-black rounded-full p-1 sm:p-1.5 shadow-md border-2 sm:border-3 border-black flex items-center">
+                <div class="w-full h-full bg-white rounded-full p-0.5 overflow-hidden">
+                    <div id="p2HpBar" class="h-full bg-[#facc15] rounded-full transition-all duration-150 ml-auto"
+                        style="width: 100%;"></div>
+                </div>
+            </div>
+            <div
+                class="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full bg-black text-white text-xs sm:text-sm md:text-base font-black flex items-center justify-center shrink-0 border-2 sm:border-3 border-black shadow-md">
+                P2
+            </div>
+            <div
+                class="bg-black text-white font-black text-xs sm:text-sm md:text-base px-3 sm:px-5 py-1.5 rounded-full border-2 sm:border-3 border-black tracking-wider shrink-0 shadow-md">
+                CHALAWAN
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Solid Black Floor Bar at Bottom -->
+    <div class="relative z-10 w-full h-10 sm:h-12 md:h-14 bg-black border-t-4 border-black shrink-0"></div>
+
+    <!-- Game Over Winner Modal -->
+    <div id="winnerModal"
+        class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div
-            class="absolute top-4 left-4 bg-white/90 backdrop-blur border border-slate-200 p-4 rounded-xl shadow-md text-xs space-y-2 max-w-xs">
-            <h3 class="font-bold text-slate-700 text-sm border-b border-slate-200 pb-1 mb-2">🎮 การควบคุม (Controls)
-            </h3>
-            <div><span class="font-semibold bg-slate-200 px-1.5 py-0.5 rounded border border-slate-300">W A S D</span> :
-                เคลื่อนที่ลอยตัว</div>
-            <div><span class="font-semibold bg-slate-200 px-1.5 py-0.5 rounded border border-slate-300">← ↑ → ↓</span> :
-                เล็งทิศทางแขน/ดาบ 360°</div>
-            <div><span class="font-semibold bg-slate-200 px-1.5 py-0.5 rounded border border-slate-300">Spacebar</span>
-                : ฟันดาบ (Attack Swing)</div>
-            <div><span class="font-semibold bg-slate-200 px-1.5 py-0.5 rounded border border-slate-300">Mouse
-                    Scroll</span> : ย่อ-ขยายขนาดตัวละคร</div>
-            <div class="pt-2 border-t border-slate-200 text-blue-600 font-medium">
-                * หมุด Pivot สีฟ้าของชิ้นส่วนที่เลือกจะแสดงอยู่หน้าสุดทับทุก Layer เสมอ
+            class="bg-white border-4 border-black rounded-3xl p-6 sm:p-8 max-w-sm w-full text-center space-y-5 shadow-2xl">
+            <div id="winnerText" class="text-2xl sm:text-3xl font-black text-black tracking-wider">
+                🎉 CHALAWAN P1 ชนะ!
             </div>
-        </div>
-    </div>
-
-    <!-- Right Side Panel: Rigging & Joint Adjuster -->
-    <div class="w-80 h-full bg-white border-l border-slate-200 shadow-xl flex flex-col z-10">
-        <!-- Header -->
-        <div class="p-4 border-b border-slate-200 bg-slate-50">
-            <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
-                ⚙️ ปรับแต่ง Joint & Pivot
-            </h2>
-            <p class="text-xs text-slate-500 mt-1">ปรับพิกัด จุดหมุน และลำดับหน้า-หลัง (Z-Index)</p>
-        </div>
-
-        <!-- Controls Form -->
-        <div class="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
-            <!-- Select Joint -->
-            <div>
-                <label class="block font-semibold text-slate-700 mb-1">เลือกชิ้นส่วน (Select Component):</label>
-                <select id="jointSelect"
-                    class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <option value="upper_body">ลำตัวบน (upper_body)</option>
-                    <option value="head">หัว (head)</option>
-                    <option value="lower_body">ลำตัวล่าง (lower_body)</option>
-                    <option value="right_upper_arm">แขนขวาท่อนบน (right_upper_arm)</option>
-                    <option value="right_arm">แขนขวาท่อนล่าง (right_arm)</option>
-                    <option value="right_hand">มือขวา (right_hand)</option>
-                    <option value="sword">ดาบ (sword)</option>
-                    <option value="left_upper_arm">แขนซ้ายท่อนบน (left_upper_arm)</option>
-                    <option value="left_arm">แขนซ้ายท่อนล่าง (left_arm)</option>
-                    <option value="left_hand">มือซ้าย (left_hand)</option>
-                    <option value="right_leg">ขาขวาท่อนบน (right_leg)</option>
-                    <option value="right_foot">เท้าขวา (right_foot)</option>
-                    <option value="left_leg">ขาซ้ายท่อนบน (left_leg)</option>
-                    <option value="left_foot">เท้าซ้าย (left_foot)</option>
-                </select>
-            </div>
-
-            <!-- Joint Settings Box -->
-            <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-3">
-                <!-- Z-Index Layer -->
-                <div class="bg-amber-50 border border-amber-200 p-2 rounded-md">
-                    <div class="flex justify-between font-medium text-amber-900 mb-1">
-                        <span>ลำดับ Layer หน้า-หลัง (Z-Index):</span>
-                        <span id="val_zIndex" class="text-amber-700 font-bold">0</span>
-                    </div>
-                    <input type="range" id="slider_zIndex" min="0" max="100" value="0"
-                        class="w-full accent-amber-600 h-1.5 bg-amber-200 rounded-lg cursor-pointer">
-                </div>
-
-                <!-- Offset X -->
-                <div>
-                    <div class="flex justify-between font-medium text-slate-600 mb-1">
-                        <span>Offset X (ตำแหน่งข้อต่อ):</span>
-                        <span id="val_x" class="text-blue-600 font-bold">0</span>
-                    </div>
-                    <input type="range" id="slider_x" min="-200" max="200" value="0"
-                        class="w-full accent-blue-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer">
-                </div>
-
-                <!-- Offset Y -->
-                <div>
-                    <div class="flex justify-between font-medium text-slate-600 mb-1">
-                        <span>Offset Y (ตำแหน่งข้อต่อ):</span>
-                        <span id="val_y" class="text-blue-600 font-bold">0</span>
-                    </div>
-                    <input type="range" id="slider_y" min="-200" max="200" value="0"
-                        class="w-full accent-blue-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer">
-                </div>
-
-                <!-- Pivot X -->
-                <div class="bg-blue-50 border border-blue-200 p-2 rounded-md">
-                    <div class="flex justify-between font-medium text-blue-900 mb-1">
-                        <span>Pivot X (ขยับรูปแนวขวาง):</span>
-                        <span id="val_pivotX" class="text-blue-700 font-bold">0</span>
-                    </div>
-                    <input type="range" id="slider_pivotX" min="-200" max="200" value="0"
-                        class="w-full accent-blue-600 h-1.5 bg-blue-200 rounded-lg cursor-pointer">
-                </div>
-
-                <!-- Pivot Y -->
-                <div class="bg-blue-50 border border-blue-200 p-2 rounded-md">
-                    <div class="flex justify-between font-medium text-blue-900 mb-1">
-                        <span>Pivot Y (ขยับรูปแนวดิ่ง):</span>
-                        <span id="val_pivotY" class="text-blue-700 font-bold">0</span>
-                    </div>
-                    <input type="range" id="slider_pivotY" min="-200" max="200" value="0"
-                        class="w-full accent-blue-600 h-1.5 bg-blue-200 rounded-lg cursor-pointer">
-                </div>
-
-                <!-- Angle Offset -->
-                <div>
-                    <div class="flex justify-between font-medium text-slate-600 mb-1">
-                        <span>Rotation (°):</span>
-                        <span id="val_rotation" class="text-blue-600 font-bold">0</span>
-                    </div>
-                    <input type="range" id="slider_rotation" min="-180" max="180" value="0"
-                        class="w-full accent-blue-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer">
-                </div>
-            </div>
-
-            <!-- Global Scale Slider -->
-            <div class="bg-blue-50 border border-blue-100 rounded-lg p-3">
-                <div class="flex justify-between font-medium text-blue-800 mb-1">
-                    <span>ขนาดรวมตัวละคร (Overall Scale):</span>
-                    <span id="val_scale" class="font-bold">0.50x</span>
-                </div>
-                <input type="range" id="slider_scale" min="0.1" max="1.5" step="0.01" value="0.5"
-                    class="w-full accent-blue-600 h-1.5 bg-blue-200 rounded-lg cursor-pointer">
-            </div>
-
-            <!-- Red Joint Markers Toggle -->
-            <div class="flex items-center justify-between p-2 bg-slate-50 border border-slate-200 rounded-lg">
-                <span class="font-medium text-slate-700">แสดงจุดข้อต่อ (Show Joints)</span>
-                <input type="checkbox" id="chkJoints" checked
-                    class="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer">
-            </div>
-
-            <!-- Actions -->
-            <div class="pt-2 space-y-2">
-                <button id="btnResetCurrent"
-                    class="w-full py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium rounded-lg transition-colors">
-                    🔄 รีเซ็ต Joint ที่เลือก
-                </button>
-                <button id="btnExportJSON"
-                    class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2">
-                    📋 Export / คัดลอก JSON
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Export Modal -->
-    <div id="exportModal"
-        class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-lg w-full p-6 space-y-4">
-            <div class="flex items-center justify-between border-b border-slate-200 pb-3">
-                <h3 class="text-base font-bold text-slate-800">📄 JSON Structure (โครงสร้าง Joint ล่าสุด)</h3>
-                <button id="btnCloseModal"
-                    class="text-slate-400 hover:text-slate-600 font-bold text-lg">&times;</button>
-            </div>
-            <p class="text-xs text-slate-500">คัดลอกข้อความ JSON ด้านล่างนี้ไปวางทับตัวแปร <code
-                    class="bg-slate-100 px-1 py-0.5 rounded text-blue-600 font-mono">DEFAULT_JOINTS</code> ในโค้ด HTML
-                ได้เลยครับ:</p>
-            <textarea id="jsonOutput" readonly
-                class="w-full h-60 bg-slate-900 text-emerald-400 font-mono text-xs p-3 rounded-lg border border-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 selection:bg-emerald-800 selection:text-white"></textarea>
-            <div class="flex justify-end gap-2">
-                <button id="btnCopyModalText"
-                    class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs rounded-lg shadow transition-colors flex items-center gap-1.5">
-                    ✅ คัดลอกไปยัง Clipboard
-                </button>
-                <button id="btnCloseModalBtn"
-                    class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium text-xs rounded-lg transition-colors">
-                    ปิด
-                </button>
-            </div>
+            <p class="text-xs text-slate-600 font-bold">การดวลหนังตะลุงสิ้นสุดลงแล้ว!</p>
+            <button id="btnRestart"
+                class="w-full py-3.5 bg-[#facc15] hover:bg-amber-400 text-black border-2 border-black font-black rounded-xl shadow-md hover:shadow-lg transition-all text-xs sm:text-sm tracking-wide">
+                ⚔️ เล่นใหม่อีกครั้ง (RESTART)
+            </button>
         </div>
     </div>
 
     <script>
-        // --- 1. CONFIG & INITIAL JOINT DATA ---
+        // =========================================================================
+        // ⚙️ ตัวแปรสำหรับปรับองศาการฟัน ความเร็ว ระบบชาร์จ การหน่วงออร่า และการควบคุมมือ
+        // =========================================================================
+        const MAX_SLASH_ANGLE = 45;   // 📐 องศามุมการฟันไปข้างหน้าใน 1 ครั้ง
+        const MAX_CHARGE_WINDUP = 28;   // 📐 องศาที่ดาบง้างถอยหลังเพิ่มขึ้นเมื่อชาร์จเต็ม
+        const SLASH_SWING_SPEED = 4.2;  // ความเร็วตอนฟันดาบออก
+        const SLASH_RETRACT_SPEED = 3.5;  // ความเร็วตอนชักดาบกลับ
+        const MOVE_SPEED = 5.5;  // ความเร็วในการเดินของตัวละคร
+        const BASE_DAMAGE = 20;   // ค่าความเสียหายพื้นฐาน (100%)
+        const PART_FLASH_DURATION = 22;   // ระยะเวลา (เฟรม) ที่ชิ้นส่วนร่างกายเปลี่ยนสีเมื่อโดนฟัน
+        const CLASH_KNOCKBACK = 28;   // ระยะกระเด็นถอยหลังเมื่อดาบฟันปะทะกันเอง
+
+        // --- ตัวแปรระบบ Charge Attack, ดีเลย์ออร่าสีแดง & การควบคุมมือ ---
+        const MAX_CHARGE_MULTIPLIER = 1.5;  // ความแรงสูงสุดเมื่อชาร์จเต็ม (1.5 เท่า)
+        const MAX_CHARGE_FRAMES = 55;   // จำนวนเฟรมที่ใช้ชาร์จจนเต็ม 100% (~0.9 วินาที)
+        const CHARGE_AURA_DELAY_FRAMES = 14;   // ⏳ ดีเลย์ (จำนวนเฟรม) ก่อนที่ออร่าสีแดงจะเริ่มปรากฏเมื่อกดชาร์จค้าง
+        const HAND_CONTROL_SPEED = 2.2;  // ความเร็วในการบังคับยก/ลดมือที่ถือดาบ (Q/E และ U/O)
+        const HAND_MIN_ANGLE = -55;  // มุมยกมือสูงสุด (เล็งส่วนหัว)
+        const HAND_MAX_ANGLE = 50;   // มุมลดมือต่ำสุด (เล็งส่วนขา)
+
+        // --- 1. CONFIG & RIGGING DATA ---
         const DEFAULT_JOINTS = {
-        "upper_body": {
-            "x": 0,
-                "y": 0,
-                    "pivotX": 0,
-                        "pivotY": 0,
-                            "rotation": 0,
-                                "zIndex": 70
-        },
-        "head": {
-            "x": 0,
-                "y": -101,
-                    "pivotX": 38,
-                        "pivotY": -93,
-                            "rotation": 0,
-                                "zIndex": 80
-        },
-        "lower_body": {
-            "x": 0,
-                "y": 154,
-                    "pivotX": 0,
-                        "pivotY": 0,
-                            "rotation": 0,
-                                "zIndex": 82
-        },
-        "right_upper_arm": {
-            "x": 95,
-                "y": -4,
-                    "pivotX": 35,
-                        "pivotY": 24,
-                            "rotation": 0,
-                                "zIndex": 30
-        },
-        "right_arm": {
-            "x": 78,
-                "y": 71,
-                    "pivotX": 55,
-                        "pivotY": -18,
-                            "rotation": -9,
-                                "zIndex": 40
-        },
-        "sword": {
-            "x": 34,
-                "y": 4,
-                    "pivotX": -8,
-                        "pivotY": -178,
-                            "rotation": 16,
-                                "zIndex": 50
-        },
-        "right_hand": {
-            "x": 108,
-                "y": -44,
-                    "pivotX": 24,
-                        "pivotY": 3,
-                            "rotation": 0,
-                                "zIndex": 60
-        },
-        "left_upper_arm": {
-            "x": -87,
-                "y": -5,
-                    "pivotX": -45,
-                        "pivotY": 4,
-                            "rotation": 0,
-                                "zIndex": 20
-        },
-        "left_arm": {
-            "x": -104,
-                "y": 24,
-                    "pivotX": -39,
-                        "pivotY": 38,
-                            "rotation": 0,
-                                "zIndex": 21
-        },
-        "left_hand": {
-            "x": -78,
-                "y": 88,
-                    "pivotX": 1,
-                        "pivotY": 24,
-                            "rotation": 0,
-                                "zIndex": 22
-        },
-        "right_leg": {
-            "x": 50,
-                "y": -1,
-                    "pivotX": 27,
-                        "pivotY": 25,
-                            "rotation": 0,
-                                "zIndex": 13
-        },
-        "right_foot": {
-            "x": 65,
-                "y": 70,
-                    "pivotX": 49,
-                        "pivotY": 62,
-                            "rotation": 0,
-                                "zIndex": 14
-        },
-        "left_leg": {
-            "x": -70,
-                "y": 3,
-                    "pivotX": -7,
-                        "pivotY": 28,
-                            "rotation": 0,
-                                "zIndex": 11
-        },
-        "left_foot": {
-            "x": -36,
-                "y": 80,
-                    "pivotX": -19,
-                        "pivotY": 75,
-                            "rotation": 0,
-                                "zIndex": 12
-        }
+            upper_body: { x: 0, y: 0, pivotX: 0, pivotY: 0, rotation: 0, zIndex: 70 },
+            head: { x: 0, y: -101, pivotX: 38, pivotY: -93, rotation: 0, zIndex: 80 },
+            lower_body: { x: 0, y: 154, pivotX: 0, pivotY: 0, rotation: 0, zIndex: 82 },
+            right_upper_arm: { x: 95, y: -4, pivotX: 35, pivotY: 24, rotation: 0, zIndex: 30 },
+            right_arm: { x: 78, y: 71, pivotX: 55, pivotY: -18, rotation: -9, zIndex: 40 },
+            sword: { x: 34, y: 4, pivotX: -8, pivotY: -178, rotation: 16, zIndex: 50 },
+            right_hand: { x: 108, y: -44, pivotX: 24, pivotY: 3, rotation: 0, zIndex: 60 },
+            left_upper_arm: { x: -87, y: -5, pivotX: -45, pivotY: 4, rotation: 0, zIndex: 20 },
+            left_arm: { x: -104, y: 24, pivotX: -39, pivotY: 38, rotation: 0, zIndex: 21 },
+            left_hand: { x: -78, y: 88, pivotX: 1, pivotY: 24, rotation: 0, zIndex: 22 },
+            right_leg: { x: 50, y: -1, pivotX: 27, pivotY: 25, rotation: 0, zIndex: 13 },
+            right_foot: { x: 65, y: 70, pivotX: 49, pivotY: 62, rotation: 0, zIndex: 14 },
+            left_leg: { x: -70, y: 3, pivotX: -7, pivotY: 28, rotation: 0, zIndex: 11 },
+            left_foot: { x: -36, y: 80, pivotX: -19, pivotY: 75, rotation: 0, zIndex: 12 }
+        };
+
+        // โครงสร้าง Capsule Hitbox ของแต่ละชิ้นส่วน
+        const PART_HITBOX_CONFIG = {
+            head: { radius: 44, x1: 0, y1: 10, x2: 45, y2: -125 },
+            upper_body: { radius: 56, x1: 0, y1: -95, x2: 0, y2: 115 },
+            lower_body: { radius: 50, x1: 0, y1: -45, x2: 0, y2: 65 },
+            right_upper_arm: { radius: 30, x1: 0, y1: 0, x2: 78, y2: 71 },
+            right_arm: { radius: 26, x1: 0, y1: 0, x2: 108, y2: -44 },
+            right_hand: { radius: 24, x1: 0, y1: 0, x2: 40, y2: 6 },
+            left_upper_arm: { radius: 30, x1: 0, y1: 0, x2: -104, y2: 24 },
+            left_arm: { radius: 26, x1: 0, y1: 0, x2: -78, y2: 88 },
+            left_hand: { radius: 24, x1: 0, y1: 0, x2: 2, y2: 48 },
+            right_leg: { radius: 35, x1: 0, y1: 0, x2: 65, y2: 70 },
+            right_foot: { radius: 30, x1: 0, y1: 0, x2: 85, y2: 110 },
+            left_leg: { radius: 35, x1: 0, y1: 0, x2: -36, y2: 80 },
+            left_foot: { radius: 30, x1: 0, y1: 0, x2: -35, y2: 130 }
         };
 
         const SCENE_GRAPH = {
@@ -352,195 +184,162 @@
             sword: { parent: 'right_hand' }
         };
 
-        let joints = JSON.parse(JSON.stringify(DEFAULT_JOINTS));
+        let p1Joints = JSON.parse(JSON.stringify(DEFAULT_JOINTS));
+        let p2Joints = JSON.parse(JSON.stringify(DEFAULT_JOINTS));
 
-        let character = {
-            x: window.innerWidth / 2 - 160,
-            y: window.innerHeight / 2,
-            scale: 0.5,
-            swordAngle: 0,
-            targetSwordAngle: 0,
-            isSlashing: false,
-            slashTimer: 0
-        };
+        function createPlayerState(xRatio, facing) {
+            return {
+                x: window.innerWidth * xRatio,
+                y: window.innerHeight * 0.58,
+                vx: 0,
+                vy: 0,
+                scale: 0.78,
+                facingDir: facing,
+                visualFacingX: facing,
+                handAimAngle: 0,
+                isCharging: false,
+                chargeFrames: 0,
+                chargeRatio: 0,
+                activeSlashCharge: 0,
+                activeSlashAura: 0,
+                activeSlashMultiplier: 1,
+                isSlashing: false,
+                slashState: 'idle',
+                slashAngle: 0,
+                hp: 100,
+                maxHp: 100,
+                hitCooldown: 0,
+                clashCooldown: 0,
+                partHitTimers: {},
+                walkPhase: Math.random() * Math.PI * 2,
+                idlePhase: Math.random() * Math.PI * 2,
+                walkBlend: 0,
+                worldTransforms: {},
+                swordSegmentsWorld: [],
+                bodyCapsulesWorld: {}
+            };
+        }
+
+        let p1 = createPlayerState(0.28, 1);
+        let p2 = createPlayerState(0.72, -1);
 
         let keys = {};
-        let showJoints = true;
-        let selectedJointKey = 'upper_body';
+        let gameOver = false;
+        let particles = [];
+        let timerSeconds = 60;
+        let timerInterval = null;
 
         const componentNames = Object.keys(DEFAULT_JOINTS);
         const images = {};
-        let loadedCount = 0;
 
         componentNames.forEach(name => {
             const img = new Image();
             img.src = `Body_Component/${name}.png`;
-            img.onload = () => { loadedCount++; };
             images[name] = img;
         });
 
-        // --- 2. CANVAS SETUP ---
+        // --- 2. CANVAS SETUP & DYNAMIC SCALING ---
         const canvas = document.getElementById('stageCanvas');
         const ctx = canvas.getContext('2d');
 
         function resizeCanvas() {
-            canvas.width = window.innerWidth - 320;
+            canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
+
+            const responsiveScale = Math.min(Math.max(canvas.height * 0.00105, 0.65), 0.88);
+            p1.scale = responsiveScale;
+            p2.scale = responsiveScale;
+
+            if (!gameOver) {
+                p1.y = canvas.height * 0.56;
+                p2.y = canvas.height * 0.56;
+            }
         }
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
 
-        // --- 3. UI SYNC ENGINE ---
-        const jointSelect = document.getElementById('jointSelect');
-        const sliderX = document.getElementById('slider_x');
-        const sliderY = document.getElementById('slider_y');
-        const sliderPivotX = document.getElementById('slider_pivotX');
-        const sliderPivotY = document.getElementById('slider_pivotY');
-        const sliderRotation = document.getElementById('slider_rotation');
-        const sliderZIndex = document.getElementById('slider_zIndex');
-        const sliderScale = document.getElementById('slider_scale');
-
-        const valX = document.getElementById('val_x');
-        const valY = document.getElementById('val_y');
-        const valPivotX = document.getElementById('val_pivotX');
-        const valPivotY = document.getElementById('val_pivotY');
-        const valRotation = document.getElementById('val_rotation');
-        const valZIndex = document.getElementById('val_zIndex');
-        const valScale = document.getElementById('val_scale');
-        const chkJoints = document.getElementById('chkJoints');
-
-        function syncUIFromJoint(key) {
-            selectedJointKey = key;
-            const j = joints[key];
-            if (!j) return;
-
-            sliderX.value = j.x;
-            valX.textContent = j.x;
-
-            sliderY.value = j.y;
-            valY.textContent = j.y;
-
-            sliderPivotX.value = j.pivotX;
-            valPivotX.textContent = j.pivotX;
-
-            sliderPivotY.value = j.pivotY;
-            valPivotY.textContent = j.pivotY;
-
-            sliderRotation.value = j.rotation;
-            valRotation.textContent = j.rotation + '°';
-
-            sliderZIndex.value = j.zIndex || 0;
-            valZIndex.textContent = j.zIndex || 0;
-        }
-
-        function updateJointFromUI() {
-            const j = joints[selectedJointKey];
-            if (!j) return;
-
-            j.x = parseInt(sliderX.value);
-            j.y = parseInt(sliderY.value);
-            j.pivotX = parseInt(sliderPivotX.value);
-            j.pivotY = parseInt(sliderPivotY.value);
-            j.rotation = parseInt(sliderRotation.value);
-            j.zIndex = parseInt(sliderZIndex.value);
-
-            valX.textContent = j.x;
-            valY.textContent = j.y;
-            valPivotX.textContent = j.pivotX;
-            valPivotY.textContent = j.pivotY;
-            valRotation.textContent = j.rotation + '°';
-            valZIndex.textContent = j.zIndex;
-        }
-
-        jointSelect.addEventListener('change', (e) => syncUIFromJoint(e.target.value));
-        [sliderX, sliderY, sliderPivotX, sliderPivotY, sliderRotation, sliderZIndex].forEach(elem => {
-            elem.addEventListener('input', updateJointFromUI);
-        });
-
-        sliderScale.addEventListener('input', (e) => {
-            character.scale = parseFloat(e.target.value);
-            valScale.textContent = character.scale.toFixed(2) + 'x';
-        });
-
-        chkJoints.addEventListener('change', (e) => {
-            showJoints = e.target.checked;
-        });
-
-        document.getElementById('btnResetCurrent').addEventListener('click', () => {
-            if (DEFAULT_JOINTS[selectedJointKey]) {
-                joints[selectedJointKey] = JSON.parse(JSON.stringify(DEFAULT_JOINTS[selectedJointKey]));
-                syncUIFromJoint(selectedJointKey);
+        // Round Timer
+        timerInterval = setInterval(() => {
+            if (!gameOver && timerSeconds > 0) {
+                timerSeconds--;
+                document.getElementById('timerText').textContent = timerSeconds;
+                if (timerSeconds === 0) {
+                    if (p1.hp > p2.hp) triggerGameOver('🎉 CHALAWAN P1 ชนะ (หมดเวลา)!');
+                    else if (p2.hp > p1.hp) triggerGameOver('🎉 CHALAWAN P2 ชนะ (หมดเวลา)!');
+                    else triggerGameOver('🤝 เสมอกัน!');
+                }
             }
-        });
+        }, 1000);
 
-        canvas.addEventListener('wheel', (e) => {
-            e.preventDefault();
-            character.scale += e.deltaY * -0.001;
-            character.scale = Math.min(Math.max(0.1, character.scale), 1.5);
-            sliderScale.value = character.scale;
-            valScale.textContent = character.scale.toFixed(2) + 'x';
-        }, { passive: false });
-
-        syncUIFromJoint(selectedJointKey);
-
-        // --- 4. EXPORT & MODAL ---
-        const exportModal = document.getElementById('exportModal');
-        const jsonOutput = document.getElementById('jsonOutput');
-
-        document.getElementById('btnExportJSON').addEventListener('click', () => {
-            const jsonText = JSON.stringify(joints, null, 4);
-            jsonOutput.value = jsonText;
-            exportModal.classList.remove('hidden');
-            tryCopyText(jsonText);
-        });
-
-        function closeModal() {
-            exportModal.classList.add('hidden');
+        function getSwordAuraIntensity(playerObj) {
+            if (playerObj.isCharging) {
+                if (playerObj.chargeFrames <= CHARGE_AURA_DELAY_FRAMES) {
+                    return 0;
+                }
+                const effectiveFrames = playerObj.chargeFrames - CHARGE_AURA_DELAY_FRAMES;
+                const maxEffectiveFrames = Math.max(1, MAX_CHARGE_FRAMES - CHARGE_AURA_DELAY_FRAMES);
+                return Math.min(1, effectiveFrames / maxEffectiveFrames);
+            }
+            if (playerObj.isSlashing && playerObj.slashState === 'swing') {
+                return playerObj.activeSlashAura || 0;
+            }
+            return 0;
         }
 
-        document.getElementById('btnCloseModal').addEventListener('click', closeModal);
-        document.getElementById('btnCloseModalBtn').addEventListener('click', closeModal);
-        document.getElementById('btnCopyModalText').addEventListener('click', () => {
-            tryCopyText(jsonOutput.value);
-        });
-
-        function tryCopyText(text) {
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(text).then(() => {
-                    alert('✅ คัดลอก JSON เรียบร้อยแล้ว!');
-                }).catch(() => fallbackCopy(text));
-            } else {
-                fallbackCopy(text);
+        // --- 3. KEYBOARD INPUTS ---
+        function startCharging(playerObj) {
+            if (!playerObj.isSlashing && !playerObj.isCharging) {
+                playerObj.isCharging = true;
+                playerObj.chargeFrames = 0;
+                playerObj.chargeRatio = 0;
             }
         }
 
-        function fallbackCopy(text) {
-            jsonOutput.select();
-            jsonOutput.setSelectionRange(0, 99999);
-            try {
-                document.execCommand('copy');
-                alert('✅ คัดลอก JSON เรียบร้อยแล้ว!');
-            } catch (err) {
-                alert('ไม่สามารถคัดลอกอัตโนมัติได้ กรุณากด Ctrl+C บนข้อความในกล่องครับ');
+        function releaseChargeAndSlash(playerObj) {
+            if (playerObj.isCharging) {
+                const auraAtRelease = getSwordAuraIntensity(playerObj);
+                playerObj.isCharging = false;
+                playerObj.isSlashing = true;
+                playerObj.slashState = 'swing';
+                playerObj.activeSlashCharge = playerObj.chargeRatio;
+                playerObj.activeSlashAura = auraAtRelease;
+                playerObj.activeSlashMultiplier = 1 + (MAX_CHARGE_MULTIPLIER - 1) * playerObj.chargeRatio;
+                playerObj.chargeFrames = 0;
+                playerObj.chargeRatio = 0;
             }
         }
 
-        // --- 5. KEYBOARD INPUTS ---
         window.addEventListener('keydown', (e) => {
             keys[e.key.toLowerCase()] = true;
             keys[e.key] = true;
-            if (e.code === 'Space') {
-                character.isSlashing = true;
-                character.slashTimer = 10;
+            keys[e.code] = true;
+
+            if (!gameOver && !e.repeat) {
+                if (e.code === 'Space') {
+                    startCharging(p1);
+                }
+                if (e.code === 'Enter') {
+                    startCharging(p2);
+                }
             }
         });
 
         window.addEventListener('keyup', (e) => {
             keys[e.key.toLowerCase()] = false;
             keys[e.key] = false;
+            keys[e.code] = false;
+
+            if (!gameOver) {
+                if (e.code === 'Space') {
+                    releaseChargeAndSlash(p1);
+                }
+                if (e.code === 'Enter') {
+                    releaseChargeAndSlash(p2);
+                }
+            }
         });
 
-        // --- 6. 2D MATRIX MATH HELPERS ---
+        // --- 4. KINEMATICS & MATRIX CALCULATIONS ---
         function multiplyMatrix(m1, m2) {
             return [
                 m1[0] * m2[0] + m1[2] * m2[1],
@@ -559,41 +358,228 @@
             return [cos, sin, -sin, cos, x, y];
         }
 
-        function getLocalMatrix(name) {
-            const j = joints[name] || { x: 0, y: 0, rotation: 0 };
-            let extraRot = 0;
+        function getJointAnimationOffset(playerObj, name) {
+            let dx = 0, dy = 0, dRot = 0;
 
-            if (name === 'right_upper_arm') {
-                extraRot += character.swordAngle;
-                if (character.isSlashing) {
-                    extraRot += Math.sin(character.slashTimer * 0.5) * 45;
-                }
+            const wp = playerObj.walkPhase;
+            const ip = playerObj.idlePhase;
+            const wb = playerObj.walkBlend;
+
+            const slashForwardRatio = (playerObj.isSlashing && playerObj.slashAngle > 0)
+                ? (playerObj.slashAngle / MAX_SLASH_ANGLE)
+                : 0;
+
+            const chargeRatio = playerObj.isCharging
+                ? playerObj.chargeRatio
+                : (playerObj.isSlashing && playerObj.slashAngle < 0 ? Math.abs(playerObj.slashAngle) / MAX_CHARGE_WINDUP : 0);
+
+            const auraIntensity = getSwordAuraIntensity(playerObj);
+            const chargeTremor = playerObj.isCharging
+                ? Math.sin(performance.now() * 0.06) * 1.8 * auraIntensity
+                : 0;
+
+            const handAimNorm = playerObj.handAimAngle / 50;
+            const forwardMove = (playerObj.vx * playerObj.facingDir) / MOVE_SPEED;
+
+            switch (name) {
+                case 'upper_body':
+                    dy = Math.abs(Math.sin(wp)) * -2.5 * wb + Math.sin(ip) * 1.5 * (1 - wb);
+                    dRot = (forwardMove * 2 + Math.sin(wp) * 1) * wb
+                        + (slashForwardRatio * 5)
+                        - (chargeRatio * 6)
+                        + (handAimNorm * 4);
+                    break;
+
+                case 'head':
+                    dy = Math.sin(wp * 2) * -1 * wb;
+                    dRot = (Math.sin(wp - 0.4) * 2 * wb)
+                        + (Math.sin(ip - 0.5) * 1.5 * (1 - wb))
+                        - (slashForwardRatio * 4)
+                        + (chargeRatio * 5)
+                        + (handAimNorm * 6);
+                    break;
+
+                case 'lower_body':
+                    dy = Math.sin(wp * 2) * 1 * wb;
+                    dRot = -forwardMove * 1.5 * wb + Math.cos(wp) * 1 * wb + (chargeRatio * 4);
+                    break;
+
+                case 'right_upper_arm':
+                    dx = (Math.cos(wp) * 2 * wb) + (slashForwardRatio * 10) - (chargeRatio * 10);
+                    dy = (Math.sin(wp * 2) * -2 * wb) + (Math.sin(ip) * -1 * (1 - wb)) - (slashForwardRatio * 4) + (handAimNorm * 12) - (chargeRatio * 6);
+                    dRot = (Math.sin(wp) * 4 * wb)
+                        + (Math.sin(ip) * 1.5 * (1 - wb))
+                        + (playerObj.handAimAngle * 0.6)
+                        + playerObj.slashAngle
+                        + chargeTremor;
+                    break;
+
+                case 'right_arm':
+                    dx = (Math.sin(wp) * 2.5 * wb) + (slashForwardRatio * 10) - (chargeRatio * 10);
+                    dy = (Math.cos(wp) * 2 * wb) - (slashForwardRatio * 6) + (handAimNorm * 16) - (chargeRatio * 8);
+                    dRot = (Math.sin(wp - 0.6) * 5 * wb)
+                        + (Math.cos(ip) * 1.5 * (1 - wb))
+                        + (playerObj.handAimAngle * 0.4)
+                        + (slashForwardRatio * 8)
+                        - (chargeRatio * 10);
+                    break;
+
+                case 'right_hand':
+                    dx = (Math.cos(wp) * 3 * wb)
+                        + (forwardMove * 2 * wb)
+                        + (slashForwardRatio * 14)
+                        - (chargeRatio * 12)
+                        + ((1 - Math.abs(handAimNorm)) * 5);
+                    dy = (Math.sin(wp) * 2.5 * wb)
+                        + (Math.sin(ip) * 1.5 * (1 - wb))
+                        + (slashForwardRatio * 5)
+                        + (handAimNorm * 22)
+                        - (chargeRatio * 8);
+                    dRot = (Math.sin(wp - 0.9) * 4 * wb)
+                        + (playerObj.handAimAngle * 0.35)
+                        + (slashForwardRatio * 6)
+                        - (chargeRatio * 8)
+                        + chargeTremor;
+                    break;
+
+                case 'sword':
+                    dRot = -(chargeRatio * 8) + (slashForwardRatio * 4) + chargeTremor * 1.2;
+                    break;
+
+                case 'left_upper_arm':
+                    dx = -Math.cos(wp) * 2 * wb;
+                    dy = Math.sin(wp * 2 + Math.PI) * -1.5 * wb;
+                    dRot = (-Math.sin(wp) * 8 * wb) + (Math.sin(ip + Math.PI) * 1.5 * (1 - wb)) - (slashForwardRatio * 12) + (chargeRatio * 10);
+                    break;
+
+                case 'left_arm':
+                    dx = -Math.sin(wp) * 1.5 * wb;
+                    dy = Math.cos(wp) * 1.5 * wb;
+                    dRot = (-Math.sin(wp - 0.5) * 7 * wb) - 3 * wb + (chargeRatio * 8);
+                    break;
+
+                case 'left_hand':
+                    dx = -Math.cos(wp) * 2 * wb;
+                    dy = -Math.sin(wp) * 2 * wb;
+                    dRot = -Math.sin(wp - 0.8) * 4 * wb;
+                    break;
+
+                case 'right_leg':
+                    dx = Math.sin(wp) * 3.5 * wb;
+                    dy = Math.min(0, Math.cos(wp) * 3) * wb;
+                    dRot = Math.sin(wp) * 10 * wb;
+                    break;
+
+                case 'right_foot':
+                    dy = Math.max(0, Math.cos(wp) * -3) * wb;
+                    dRot = (Math.max(0, Math.cos(wp)) * 8 - 3) * wb;
+                    break;
+
+                case 'left_leg':
+                    dx = Math.sin(wp + Math.PI) * 3.5 * wb;
+                    dy = Math.min(0, Math.cos(wp + Math.PI) * 3) * wb;
+                    dRot = Math.sin(wp + Math.PI) * 10 * wb;
+                    break;
+
+                case 'left_foot':
+                    dy = Math.max(0, Math.cos(wp + Math.PI) * -3) * wb;
+                    dRot = (Math.max(0, Math.cos(wp + Math.PI)) * 8 - 3) * wb;
+                    break;
             }
-            return createTransformMatrix(j.x, j.y, j.rotation + extraRot);
+
+            return { dx, dy, dRot };
         }
 
-        // --- 7. SCENE GRAPH & LAYERED RENDER ENGINE ---
-        function drawBackgroundGrid() {
-            ctx.fillStyle = '#f1f5f9';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            ctx.fillStyle = '#cbd5e1';
-            const gridSize = 30;
-            for (let x = 15; x < canvas.width; x += gridSize) {
-                for (let y = 15; y < canvas.height; y += gridSize) {
-                    ctx.beginPath();
-                    ctx.arc(x, y, 1.5, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-            }
+        function getLocalMatrix(playerObj, jointsObj, name) {
+            const j = jointsObj[name] || { x: 0, y: 0, rotation: 0 };
+            const anim = getJointAnimationOffset(playerObj, name);
+            return createTransformMatrix(j.x + anim.dx, j.y + anim.dy, j.rotation + anim.dRot);
         }
 
-        function renderCharacter() {
-            // 1. Calculate World Matrix for all joints
+        function localToWorld(playerObj, m, lx, ly) {
+            const relX = m[4] + m[0] * lx + m[2] * ly;
+            const relY = m[5] + m[1] * lx + m[3] * ly;
+            return {
+                x: playerObj.x + relX * playerObj.scale * playerObj.visualFacingX,
+                y: playerObj.y + relY * playerObj.scale
+            };
+        }
+
+        function segmentToSegmentCollision(A, B, C, D) {
+            const ux = B.x - A.x, uy = B.y - A.y;
+            const vx = D.x - C.x, vy = D.y - C.y;
+            const wx = A.x - C.x, wy = A.y - C.y;
+
+            const a = ux * ux + uy * uy;
+            const b = ux * vx + uy * vy;
+            const c = vx * vx + vy * vy;
+            const d = ux * wx + uy * wy;
+            const e = vx * wx + vy * wy;
+            const D_det = a * c - b * b;
+
+            let sc, sN, sD = D_det;
+            let tc, tN, tD = D_det;
+
+            if (D_det < 1e-7) {
+                sN = 0.0;
+                sD = 1.0;
+                tN = e;
+                tD = c;
+            } else {
+                sN = (b * e - c * d);
+                tN = (a * e - b * d);
+                if (sN < 0.0) {
+                    sN = 0.0;
+                    tN = e;
+                    tD = c;
+                } else if (sN > sD) {
+                    sN = sD;
+                    tN = e + b;
+                    tD = c;
+                }
+            }
+
+            if (tN < 0.0) {
+                tN = 0.0;
+                if (-d < 0.0) sN = 0.0;
+                else if (-d > a) sN = sD;
+                else {
+                    sN = -d;
+                    sD = a;
+                }
+            } else if (tN > tD) {
+                tN = tD;
+                if ((-d + b) < 0.0) sN = 0.0;
+                else if ((-d + b) > a) sN = sD;
+                else {
+                    sN = (-d + b);
+                    sD = a;
+                }
+            }
+
+            sc = (Math.abs(sN) < 1e-7 ? 0.0 : sN / sD);
+            tc = (Math.abs(tN) < 1e-7 ? 0.0 : tN / tD);
+
+            const closestOnAB = { x: A.x + sc * ux, y: A.y + sc * uy };
+            const closestOnCD = { x: C.x + tc * vx, y: C.y + tc * vy };
+
+            const dx = closestOnAB.x - closestOnCD.x;
+            const dy = closestOnAB.y - closestOnCD.y;
+
+            return {
+                distance: Math.sqrt(dx * dx + dy * dy),
+                contactPoint: {
+                    x: (closestOnAB.x + closestOnCD.x) * 0.5,
+                    y: (closestOnAB.y + closestOnCD.y) * 0.5
+                }
+            };
+        }
+
+        function updatePlayerTransforms(playerObj, jointsObj) {
             const worldTransforms = {};
 
             function computeWorldTransform(name, parentMatrix) {
-                const localM = getLocalMatrix(name);
+                const localM = getLocalMatrix(playerObj, jointsObj, name);
                 const worldM = parentMatrix ? multiplyMatrix(parentMatrix, localM) : localM;
                 worldTransforms[name] = worldM;
 
@@ -605,82 +591,190 @@
             }
 
             computeWorldTransform('upper_body', null);
+            playerObj.worldTransforms = worldTransforms;
 
-            // 2. Sort components by Z-Index (Back to Front)
-            const sortedNames = Object.keys(joints).sort((a, b) => {
-                const zA = joints[a].zIndex || 0;
-                const zB = joints[b].zIndex || 0;
-                return zA - zB;
+            Object.keys(PART_HITBOX_CONFIG).forEach(partName => {
+                const m = worldTransforms[partName];
+                if (!m) return;
+
+                const cfg = PART_HITBOX_CONFIG[partName];
+                const j = jointsObj[partName] || { pivotX: 0, pivotY: 0 };
+                const img = images[partName];
+
+                const segments = [];
+
+                segments.push({
+                    a: localToWorld(playerObj, m, cfg.x1, cfg.y1),
+                    b: localToWorld(playerObj, m, cfg.x2, cfg.y2),
+                    radius: cfg.radius * playerObj.scale
+                });
+
+                if (img && img.complete && img.naturalWidth > 0) {
+                    const halfW = img.width * 0.42;
+                    const halfH = img.height * 0.42;
+                    if (img.height >= img.width) {
+                        const span = Math.max(10, halfH - halfW * 0.5);
+                        segments.push({
+                            a: localToWorld(playerObj, m, j.pivotX, j.pivotY - span),
+                            b: localToWorld(playerObj, m, j.pivotX, j.pivotY + span),
+                            radius: halfW * playerObj.scale
+                        });
+                    } else {
+                        const span = Math.max(10, halfW - halfH * 0.5);
+                        segments.push({
+                            a: localToWorld(playerObj, m, j.pivotX - span, j.pivotY),
+                            b: localToWorld(playerObj, m, j.pivotX + span, j.pivotY),
+                            radius: halfH * playerObj.scale
+                        });
+                    }
+                }
+
+                playerObj.bodyCapsulesWorld[partName] = segments;
             });
 
-            // 3. PASS 1: Render All Images and Unselected Joint Markers
+            if (worldTransforms['sword']) {
+                const swM = worldTransforms['sword'];
+                const j = jointsObj['sword'] || { pivotX: -8, pivotY: -178 };
+                const swordImg = images['sword'];
+                const hasSwordImg = swordImg && swordImg.complete && swordImg.naturalWidth > 0;
+
+                const halfBladeLen = hasSwordImg
+                    ? (swordImg.height / 2)
+                    : Math.max(Math.abs(j.pivotY), 75);
+
+                const bladeRadius = (hasSwordImg ? Math.min(swordImg.width * 0.35, 22) : 16) * playerObj.scale;
+
+                const hiltWorld = localToWorld(playerObj, swM, 0, 20);
+                const midWorld = localToWorld(playerObj, swM, j.pivotX, j.pivotY);
+                const tipWorld = localToWorld(playerObj, swM, j.pivotX, j.pivotY - halfBladeLen);
+
+                playerObj.swordSegmentsWorld = [
+                    { a: hiltWorld, b: midWorld, radius: bladeRadius },
+                    { a: midWorld, b: tipWorld, radius: bladeRadius }
+                ];
+            }
+        }
+
+        // --- 5. RENDER PLAYER & RED SWORD CHARGE AURA ---
+        function drawSwordRedAura(img, auraIntensity) {
+            const pulse = 0.85 + Math.sin(performance.now() * 0.025) * 0.15;
+            const glowRadiusOuter = (14 + auraIntensity * 26) * pulse;
+            const glowRadiusInner = (6 + auraIntensity * 12) * pulse;
+
+            ctx.save();
+
+            const bladeHalfH = (img && img.complete && img.naturalWidth !== 0) ? (img.height * 0.48) : 175;
+            const bladeHalfW = (img && img.complete && img.naturalWidth !== 0) ? (img.width * 0.38) : 18;
+
+            const grad = ctx.createRadialGradient(0, 0, 4, 0, 0, bladeHalfH);
+            grad.addColorStop(0, `rgba(239, 68, 68, ${(0.45 + auraIntensity * 0.4) * pulse})`);
+            grad.addColorStop(0.6, `rgba(220, 38, 38, ${(0.25 + auraIntensity * 0.35) * pulse})`);
+            grad.addColorStop(1, 'rgba(220, 38, 38, 0)');
+
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.ellipse(0, -10, bladeHalfW + auraIntensity * 22 * pulse, bladeHalfH + 18, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            if (img && img.complete && img.naturalWidth !== 0) {
+                ctx.filter = `drop-shadow(0px 0px ${glowRadiusInner}px rgba(255, 80, 80, 0.95)) drop-shadow(0px 0px ${glowRadiusOuter}px rgba(220, 38, 38, 0.9))`;
+                ctx.globalAlpha = Math.min(1, 0.4 + auraIntensity * 0.6);
+                ctx.drawImage(img, -img.width / 2, -img.height / 2);
+            } else {
+                ctx.shadowColor = '#dc2626';
+                ctx.shadowBlur = glowRadiusOuter;
+                ctx.fillStyle = `rgba(239, 68, 68, ${0.4 + auraIntensity * 0.55})`;
+                ctx.beginPath();
+                ctx.roundRect(-10 - auraIntensity * 5, -176, 20 + auraIntensity * 10, 348, 12);
+                ctx.fill();
+            }
+
+            ctx.restore();
+        }
+
+        function renderPlayer(playerObj, jointsObj) {
+            const worldTransforms = playerObj.worldTransforms;
+            if (!worldTransforms || !worldTransforms['upper_body']) return;
+
+            ctx.save();
+            ctx.translate(playerObj.x, playerObj.y);
+            ctx.scale(playerObj.scale * playerObj.visualFacingX, playerObj.scale);
+
+            drawPuppetSticks(playerObj, worldTransforms);
+
+            const sortedNames = Object.keys(jointsObj).sort((a, b) => {
+                return (jointsObj[a].zIndex || 0) - (jointsObj[b].zIndex || 0);
+            });
+
+            const swordAuraIntensity = getSwordAuraIntensity(playerObj);
+
             sortedNames.forEach(name => {
                 const worldM = worldTransforms[name];
                 if (!worldM) return;
 
-                const j = joints[name] || { pivotX: 0, pivotY: 0 };
+                const j = jointsObj[name] || { pivotX: 0, pivotY: 0 };
+                const isPartHit = (playerObj.partHitTimers[name] || 0) > 0;
 
                 ctx.save();
                 ctx.transform(worldM[0], worldM[1], worldM[2], worldM[3], worldM[4], worldM[5]);
 
-                // Draw Red Marker for Unselected Joints
-                if (showJoints && name !== selectedJointKey) {
-                    ctx.beginPath();
-                    ctx.arc(0, 0, 5, 0, Math.PI * 2);
-                    ctx.fillStyle = '#ef4444';
-                    ctx.fill();
-                    ctx.lineWidth = 2;
-                    ctx.strokeStyle = '#ffffff';
-                    ctx.stroke();
-                }
-
-                // Draw Component Image Offsetted by Pivot
                 ctx.save();
                 ctx.translate(j.pivotX, j.pivotY);
 
                 const img = images[name];
+
+                if (name === 'sword' && swordAuraIntensity > 0.01) {
+                    drawSwordRedAura(img, swordAuraIntensity);
+                }
+
+                if (isPartHit) {
+                    if (name === 'sword') {
+                        ctx.filter = 'invert(75%) sepia(95%) saturate(2500%) hue-rotate(5deg) brightness(115%) drop-shadow(0px 0px 10px rgba(250, 204, 21, 0.95))';
+                    } else {
+                        ctx.filter = 'invert(28%) sepia(98%) saturate(6500%) hue-rotate(352deg) brightness(105%) contrast(115%) drop-shadow(0px 0px 8px rgba(239, 68, 68, 0.85))';
+                    }
+                }
+
                 if (img && img.complete && img.naturalWidth !== 0) {
                     ctx.drawImage(img, -img.width / 2, -img.height / 2);
                 } else {
-                    drawProceduralFallback(name);
+                    drawProceduralFallback(name, isPartHit);
                 }
                 ctx.restore();
-
                 ctx.restore();
             });
 
-            // 4. PASS 2: ALWAYS DRAW SELECTED ACTIVE JOINT PIVOT ON TOP OF EVERYTHING
-            if (showJoints && selectedJointKey && worldTransforms[selectedJointKey]) {
-                const worldM = worldTransforms[selectedJointKey];
-
-                ctx.save();
-                ctx.transform(worldM[0], worldM[1], worldM[2], worldM[3], worldM[4], worldM[5]);
-
-                // Active Blue Center Point
-                ctx.beginPath();
-                ctx.arc(0, 0, 8, 0, Math.PI * 2);
-                ctx.fillStyle = '#3b82f6';
-                ctx.fill();
-                ctx.lineWidth = 2.5;
-                ctx.strokeStyle = '#ffffff';
-                ctx.stroke();
-
-                // Outer Dashed Highlight Ring
-                ctx.beginPath();
-                ctx.arc(0, 0, 15, 0, Math.PI * 2);
-                ctx.strokeStyle = '#3b82f6';
-                ctx.lineWidth = 2;
-                ctx.setLineDash([4, 4]);
-                ctx.stroke();
-                ctx.setLineDash([]);
-
-                ctx.restore();
-            }
+            ctx.restore();
         }
 
-        function drawProceduralFallback(name) {
-            ctx.fillStyle = '#1e293b';
-            ctx.strokeStyle = '#1e293b';
+        function drawPuppetSticks(playerObj, worldTransforms) {
+            ctx.save();
+            ctx.strokeStyle = '#a1a1aa';
+            ctx.lineWidth = 4;
+
+            if (worldTransforms['lower_body']) {
+                const lb = worldTransforms['lower_body'];
+                ctx.beginPath();
+                ctx.moveTo(lb[4], lb[5]);
+                ctx.lineTo(lb[4], 2000);
+                ctx.stroke();
+            }
+
+            if (worldTransforms['right_hand']) {
+                const rh = worldTransforms['right_hand'];
+                ctx.beginPath();
+                ctx.moveTo(rh[4], rh[5]);
+                ctx.lineTo(rh[4] + 60, 2000);
+                ctx.stroke();
+            }
+
+            ctx.restore();
+        }
+
+        function drawProceduralFallback(name, isPartHit = false) {
+            const hitColor = (name === 'sword') ? '#facc15' : '#ef4444';
+            ctx.fillStyle = isPartHit ? hitColor : '#000000';
+            ctx.strokeStyle = isPartHit ? hitColor : '#000000';
             ctx.lineWidth = 3;
 
             switch (name) {
@@ -733,9 +827,8 @@
                     break;
                 case 'sword':
                     ctx.beginPath();
-                    ctx.fillRect(-5, -60, 10, 70);
-                    ctx.fillStyle = '#64748b';
-                    ctx.fillRect(-15, -10, 30, 6);
+                    ctx.fillRect(-5, -170, 10, 340);
+                    ctx.fillRect(-18, 140, 36, 8);
                     break;
                 case 'right_leg':
                 case 'left_leg':
@@ -752,43 +845,419 @@
             }
         }
 
-        // --- 8. MAIN LOOP ---
-        function update() {
-            const speed = 5;
-            if (keys['w'] || keys['W']) character.y -= speed;
-            if (keys['s'] || keys['S']) character.y += speed;
-            if (keys['a'] || keys['A']) character.x -= speed;
-            if (keys['d'] || keys['D']) character.x += speed;
-
-            let aimX = 0;
-            let aimY = 0;
-            if (keys['ArrowLeft']) aimX -= 1;
-            if (keys['ArrowRight']) aimX += 1;
-            if (keys['ArrowUp']) aimY -= 1;
-            if (keys['ArrowDown']) aimY += 1;
-
-            if (aimX !== 0 || aimY !== 0) {
-                character.targetSwordAngle = (Math.atan2(aimY, aimX) * 180) / Math.PI;
-            }
-
-            character.swordAngle += (character.targetSwordAngle - character.swordAngle) * 0.2;
-
-            if (character.isSlashing) {
-                character.slashTimer--;
-                if (character.slashTimer <= 0) character.isSlashing = false;
+        // --- 6. HIT SPARKS & PARTICLES ---
+        function createHitSparks(x, y, isCritical, chargeMult = 1) {
+            const baseCount = isCritical ? 24 : 14;
+            const count = Math.round(baseCount * chargeMult);
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * (isCritical ? 16 : 11) * chargeMult,
+                    vy: (Math.random() - 0.5) * (isCritical ? 16 : 11) * chargeMult,
+                    size: (Math.random() * 5 + (isCritical ? 3 : 2)) * Math.min(1.3, chargeMult),
+                    color: isCritical ? ['#ef4444', '#dc2626', '#000000', '#f59e0b'] : ['#000000', '#ef4444', '#f59e0b'],
+                    life: 22
+                });
             }
         }
 
+        function createClashSparks(x, y) {
+            for (let i = 0; i < 32; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 11 + 3;
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    size: Math.random() * 5.5 + 2.5,
+                    color: ['#facc15', '#f59e0b', '#ffffff', '#000000'],
+                    life: 24
+                });
+            }
+        }
+
+        function spawnSwordAuraParticles(playerObj) {
+            const intensity = getSwordAuraIntensity(playerObj);
+            if (intensity <= 0.01 || playerObj.swordSegmentsWorld.length === 0) return;
+
+            const spawnCount = playerObj.isCharging ? (intensity > 0.65 ? 3 : 1) : 2;
+            for (let i = 0; i < spawnCount; i++) {
+                const seg = playerObj.swordSegmentsWorld[Math.floor(Math.random() * playerObj.swordSegmentsWorld.length)];
+                const t = Math.random();
+                const px = seg.a.x + (seg.b.x - seg.a.x) * t + (Math.random() - 0.5) * 14;
+                const py = seg.a.y + (seg.b.y - seg.a.y) * t + (Math.random() - 0.5) * 14;
+
+                particles.push({
+                    x: px,
+                    y: py,
+                    vx: (Math.random() - 0.5) * 2.5,
+                    vy: -Math.random() * 3.2 - 0.8,
+                    size: Math.random() * (3.2 + intensity * 3.5) + 1.5,
+                    color: ['#ef4444', '#dc2626', '#f87171', '#b91c1c'],
+                    life: 14
+                });
+            }
+        }
+
+        function updateParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life--;
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+        }
+
+        function drawParticles() {
+            particles.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fillStyle = p.color[Math.floor(Math.random() * p.color.length)];
+                ctx.fill();
+            });
+        }
+
+        // --- 7. SWORD CLASH & HITBOX DETECTION ---
+        function checkSwordClash(p1Obj, p2Obj) {
+            const bothSlashing = p1Obj.isSlashing && p2Obj.isSlashing;
+            const activeSwing = (p1Obj.slashState === 'swing' || p2Obj.slashState === 'swing');
+
+            if (bothSlashing && activeSwing && p1Obj.clashCooldown <= 0 && p2Obj.clashCooldown <= 0) {
+                for (const seg1 of p1Obj.swordSegmentsWorld) {
+                    for (const seg2 of p2Obj.swordSegmentsWorld) {
+                        const res = segmentToSegmentCollision(seg1.a, seg1.b, seg2.a, seg2.b);
+                        const clashThreshold = seg1.radius + seg2.radius + 6;
+
+                        if (res.distance <= clashThreshold) {
+                            p1Obj.slashState = 'retract';
+                            p2Obj.slashState = 'retract';
+
+                            p1Obj.clashCooldown = 14;
+                            p2Obj.clashCooldown = 14;
+
+                            p1Obj.partHitTimers['sword'] = PART_FLASH_DURATION;
+                            p2Obj.partHitTimers['sword'] = PART_FLASH_DURATION;
+
+                            p1Obj.x -= p1Obj.facingDir * CLASH_KNOCKBACK;
+                            p2Obj.x -= p2Obj.facingDir * CLASH_KNOCKBACK;
+
+                            createClashSparks(res.contactPoint.x, res.contactPoint.y);
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        function checkHits(attacker, defender) {
+            if (attacker.isSlashing && attacker.slashState === 'swing' && defender.hitCooldown <= 0 && defender.hp > 0) {
+                let detectedHit = null;
+                let bestPriority = -1;
+
+                const partPriority = {
+                    head: 3,
+                    upper_body: 2,
+                    lower_body: 2
+                };
+
+                for (const swordSeg of attacker.swordSegmentsWorld) {
+                    for (const [partName, capsules] of Object.entries(defender.bodyCapsulesWorld)) {
+                        for (const cap of capsules) {
+                            const res = segmentToSegmentCollision(swordSeg.a, swordSeg.b, cap.a, cap.b);
+                            const hitThreshold = swordSeg.radius + cap.radius;
+
+                            if (res.distance <= hitThreshold) {
+                                const priority = partPriority[partName] || 1;
+                                if (!detectedHit || priority > bestPriority) {
+                                    bestPriority = priority;
+                                    detectedHit = {
+                                        name: partName,
+                                        pos: res.contactPoint
+                                    };
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (detectedHit) {
+                    let partMultiplier = 1.0;
+                    let isCritical = false;
+
+                    switch (detectedHit.name) {
+                        case 'head':
+                            partMultiplier = 1.2;
+                            isCritical = true;
+                            break;
+                        case 'upper_body':
+                        case 'lower_body':
+                            partMultiplier = 1.0;
+                            break;
+                        default:
+                            partMultiplier = 0.5;
+                            break;
+                    }
+
+                    const chargeMultiplier = attacker.activeSlashMultiplier || 1.0;
+                    const finalDamage = Math.round(BASE_DAMAGE * partMultiplier * chargeMultiplier);
+
+                    defender.hp = Math.max(0, defender.hp - finalDamage);
+                    defender.hitCooldown = 16;
+
+                    defender.partHitTimers[detectedHit.name] = PART_FLASH_DURATION;
+
+                    attacker.slashState = 'retract';
+
+                    const knockbackDist = (isCritical ? 40 : 22) * chargeMultiplier;
+                    defender.x += attacker.facingDir * knockbackDist;
+
+                    createHitSparks(detectedHit.pos.x, detectedHit.pos.y, isCritical, chargeMultiplier);
+                    updateHpBars();
+
+                    if (defender.hp <= 0 && !gameOver) {
+                        triggerGameOver(attacker === p1 ? '🎉 CHALAWAN P1 ชนะ!' : '🎉 CHALAWAN P2 ชนะ!');
+                    }
+
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function updateHpBars() {
+            const p1Pct = Math.max(0, (p1.hp / p1.maxHp) * 100);
+            const p2Pct = Math.max(0, (p2.hp / p2.maxHp) * 100);
+
+            document.getElementById('p1HpBar').style.width = p1Pct + '%';
+            document.getElementById('p2HpBar').style.width = p2Pct + '%';
+        }
+
+        function triggerGameOver(winnerMessage) {
+            gameOver = true;
+            document.getElementById('winnerText').textContent = winnerMessage;
+            document.getElementById('winnerModal').classList.remove('hidden');
+        }
+
+        document.getElementById('btnRestart').addEventListener('click', () => {
+            p1.hp = 100;
+            p2.hp = 100;
+            p1.x = canvas.width * 0.28;
+            p1.y = canvas.height * 0.56;
+            p2.x = canvas.width * 0.72;
+            p2.y = canvas.height * 0.56;
+            p1.hitCooldown = 0;
+            p2.hitCooldown = 0;
+            p1.clashCooldown = 0;
+            p2.clashCooldown = 0;
+            p1.partHitTimers = {};
+            p2.partHitTimers = {};
+            p1.handAimAngle = 0;
+            p2.handAimAngle = 0;
+            p1.isCharging = false;
+            p1.chargeFrames = 0;
+            p1.chargeRatio = 0;
+            p1.activeSlashCharge = 0;
+            p1.activeSlashAura = 0;
+            p1.activeSlashMultiplier = 1;
+            p1.isSlashing = false;
+            p1.slashState = 'idle';
+            p1.slashAngle = 0;
+            p2.isCharging = false;
+            p2.chargeFrames = 0;
+            p2.chargeRatio = 0;
+            p2.activeSlashCharge = 0;
+            p2.activeSlashAura = 0;
+            p2.activeSlashMultiplier = 1;
+            p2.isSlashing = false;
+            p2.slashState = 'idle';
+            p2.slashAngle = 0;
+            particles = [];
+            timerSeconds = 60;
+            document.getElementById('timerText').textContent = timerSeconds;
+            gameOver = false;
+            updateHpBars();
+            document.getElementById('winnerModal').classList.add('hidden');
+        });
+
+        function updatePlayerChargeState(playerObj) {
+            if (playerObj.isCharging) {
+                playerObj.chargeFrames = Math.min(MAX_CHARGE_FRAMES, playerObj.chargeFrames + 1);
+                playerObj.chargeRatio = playerObj.chargeFrames / MAX_CHARGE_FRAMES;
+                playerObj.slashAngle = -playerObj.chargeRatio * MAX_CHARGE_WINDUP;
+            }
+        }
+
+        function stepPlayerSlash(playerObj, subSteps) {
+            if (!playerObj.isSlashing) return;
+
+            const swingSpeed = SLASH_SWING_SPEED * (1 + playerObj.activeSlashCharge * 0.35);
+
+            if (playerObj.slashState === 'swing') {
+                playerObj.slashAngle += swingSpeed / subSteps;
+                if (playerObj.slashAngle >= MAX_SLASH_ANGLE) {
+                    playerObj.slashAngle = MAX_SLASH_ANGLE;
+                    playerObj.slashState = 'retract';
+                }
+            } else if (playerObj.slashState === 'retract') {
+                playerObj.slashAngle -= SLASH_RETRACT_SPEED / subSteps;
+                if (playerObj.slashAngle <= 0) {
+                    playerObj.slashAngle = 0;
+                    playerObj.slashState = 'idle';
+                    playerObj.isSlashing = false;
+                    playerObj.activeSlashCharge = 0;
+                    playerObj.activeSlashAura = 0;
+                    playerObj.activeSlashMultiplier = 1.0;
+                }
+            }
+        }
+
+        function processSlashAndCollisions() {
+            const SUB_STEPS = 6;
+
+            updatePlayerChargeState(p1);
+            updatePlayerChargeState(p2);
+
+            for (let step = 0; step < SUB_STEPS; step++) {
+                stepPlayerSlash(p1, SUB_STEPS);
+                stepPlayerSlash(p2, SUB_STEPS);
+
+                updatePlayerTransforms(p1, p1Joints);
+                updatePlayerTransforms(p2, p2Joints);
+
+                if (checkSwordClash(p1, p2)) {
+                    break;
+                }
+
+                checkHits(p1, p2);
+                checkHits(p2, p1);
+            }
+        }
+
+        function updatePartTimers(playerObj) {
+            for (const part in playerObj.partHitTimers) {
+                if (playerObj.partHitTimers[part] > 0) {
+                    playerObj.partHitTimers[part]--;
+                }
+            }
+        }
+
+        function updateMovementKinematics(playerObj, moveX, moveY) {
+            const speedFactor = playerObj.isCharging ? 0.72 : 1.0;
+            const actualMoveX = moveX * speedFactor;
+            const actualMoveY = moveY * speedFactor;
+
+            playerObj.vx = actualMoveX;
+            playerObj.vy = actualMoveY;
+            playerObj.x += actualMoveX;
+            playerObj.y += actualMoveY;
+
+            const isMoving = (actualMoveX !== 0 || actualMoveY !== 0);
+            const targetBlend = isMoving ? 1 : 0;
+            playerObj.walkBlend += (targetBlend - playerObj.walkBlend) * 0.2;
+
+            if (isMoving) {
+                const dirSign = (actualMoveX * playerObj.facingDir) < 0 ? -1 : 1;
+                playerObj.walkPhase += 0.22 * dirSign * speedFactor;
+            }
+            playerObj.idlePhase += 0.06;
+        }
+
+        // --- 8. MAIN LOOP ---
+        function update() {
+            if (gameOver) return;
+
+            p1.facingDir = (p1.x <= p2.x) ? 1 : -1;
+            p2.facingDir = (p2.x >= p1.x) ? -1 : 1;
+
+            p1.visualFacingX += (p1.facingDir - p1.visualFacingX) * 0.25;
+            p2.visualFacingX += (p2.facingDir - p2.visualFacingX) * 0.25;
+
+            if (p1.hitCooldown > 0) p1.hitCooldown--;
+            if (p2.hitCooldown > 0) p2.hitCooldown--;
+            if (p1.clashCooldown > 0) p1.clashCooldown--;
+            if (p2.clashCooldown > 0) p2.clashCooldown--;
+
+            updatePartTimers(p1);
+            updatePartTimers(p2);
+
+            // P1 HAND CONTROL (Q/E)
+            if (keys['q'] || keys['Q']) {
+                p1.handAimAngle = Math.max(HAND_MIN_ANGLE, p1.handAimAngle - HAND_CONTROL_SPEED);
+            }
+            if (keys['e'] || keys['E']) {
+                p1.handAimAngle = Math.min(HAND_MAX_ANGLE, p1.handAimAngle + HAND_CONTROL_SPEED);
+            }
+
+            // P2 HAND CONTROL (U/O หรือ ,/.)
+            if (keys['u'] || keys['U'] || keys[','] || keys['<']) {
+                p2.handAimAngle = Math.max(HAND_MIN_ANGLE, p2.handAimAngle - HAND_CONTROL_SPEED);
+            }
+            if (keys['o'] || keys['O'] || keys['.'] || keys['>']) {
+                p2.handAimAngle = Math.min(HAND_MAX_ANGLE, p2.handAimAngle + HAND_CONTROL_SPEED);
+            }
+
+            // P1 MOVEMENT (WASD)
+            let p1MoveX = 0, p1MoveY = 0;
+            if (keys['w'] || keys['W']) p1MoveY -= MOVE_SPEED;
+            if (keys['s'] || keys['S']) p1MoveY += MOVE_SPEED;
+            if (keys['a'] || keys['A']) p1MoveX -= MOVE_SPEED;
+            if (keys['d'] || keys['D']) p1MoveX += MOVE_SPEED;
+            updateMovementKinematics(p1, p1MoveX, p1MoveY);
+
+            // P2 MOVEMENT (Arrows or IJKL)
+            let p2MoveX = 0, p2MoveY = 0;
+            if (keys['ArrowUp'] || keys['i'] || keys['I']) p2MoveY -= MOVE_SPEED;
+            if (keys['ArrowDown'] || keys['k'] || keys['K']) p2MoveY += MOVE_SPEED;
+            if (keys['ArrowLeft'] || keys['j'] || keys['J']) p2MoveX -= MOVE_SPEED;
+            if (keys['ArrowRight'] || keys['l'] || keys['L']) p2MoveX += MOVE_SPEED;
+            updateMovementKinematics(p2, p2MoveX, p2MoveY);
+
+            processSlashAndCollisions();
+
+            // Boundaries
+            p1.x = Math.max(80, Math.min(canvas.width - 80, p1.x));
+            p1.y = Math.max(120, Math.min(canvas.height - 120, p1.y));
+            p2.x = Math.max(80, Math.min(canvas.width - 80, p2.x));
+            p2.y = Math.max(120, Math.min(canvas.height - 120, p2.y));
+
+            updatePlayerTransforms(p1, p1Joints);
+            updatePlayerTransforms(p2, p2Joints);
+
+            spawnSwordAuraParticles(p1);
+            spawnSwordAuraParticles(p2);
+
+            updateParticles();
+        }
+
         function render() {
-            drawBackgroundGrid();
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            ctx.save();
-            ctx.translate(character.x, character.y);
-            ctx.scale(character.scale, character.scale);
+            ctx.strokeStyle = '#e2e8f0';
+            ctx.lineWidth = 1.5;
+            const gridSize = 45;
 
-            renderCharacter();
+            for (let x = 0; x < canvas.width; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            for (let y = 0; y < canvas.height; y += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
 
-            ctx.restore();
+            renderPlayer(p1, p1Joints);
+            renderPlayer(p2, p2Joints);
+
+            drawParticles();
         }
 
         function loop() {
