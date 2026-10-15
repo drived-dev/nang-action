@@ -121,7 +121,7 @@
         const SLASH_RETRACT_SPEED = 3.5;  // ความเร็วตอนชักดาบกลับ
         const MOVE_SPEED = 5.5;  // ความเร็วในการเดินของตัวละคร
         const BASE_DAMAGE = 20;   // ค่าความเสียหายพื้นฐาน (100%)
-        const PART_FLASH_DURATION = 22;   // ระยะเวลา (เฟรม) ที่ชิ้นส่วนร่างกายเปลี่ยนสีเมื่อโดนฟัน
+        const PART_FLASH_DURATION = 45;   // ระยะเวลา (เฟรม) ที่ชิ้นส่วนเปลี่ยนเป็นสีแดง
         const CLASH_KNOCKBACK = 28;   // ระยะกระเด็นถอยหลังเมื่อดาบฟันปะทะกันเอง
 
         // --- ตัวแปรระบบ Charge Attack, ดีเลย์ออร่าสีแดง & การควบคุมมือ ---
@@ -131,6 +131,10 @@
         const HAND_CONTROL_SPEED = 2.2;  // ความเร็วในการบังคับยก/ลดมือที่ถือดาบ (Q/E และ U/O)
         const HAND_MIN_ANGLE = -55;  // มุมยกมือสูงสุด (เล็งส่วนหัว)
         const HAND_MAX_ANGLE = 50;   // มุมลดมือต่ำสุด (เล็งส่วนขา)
+
+        // Offscreen Canvas สำหรับประมวลผลการเปลี่ยนเฉพาะพิกเซลสีดำเป็นสีแดง
+        const hitOffscreenCanvas = document.createElement('canvas');
+        const hitOffscreenCtx = hitOffscreenCanvas.getContext('2d');
 
         // --- 1. CONFIG & RIGGING DATA ---
         const DEFAULT_JOINTS = {
@@ -150,7 +154,6 @@
             left_foot: { x: -36, y: 80, pivotX: -19, pivotY: 75, rotation: 0, zIndex: 12 }
         };
 
-        // โครงสร้าง Capsule Hitbox ของแต่ละชิ้นส่วน
         const PART_HITBOX_CONFIG = {
             head: { radius: 44, x1: 0, y1: 10, x2: 45, y2: -125 },
             upper_body: { radius: 56, x1: 0, y1: -95, x2: 0, y2: 115 },
@@ -226,6 +229,7 @@
         let keys = {};
         let gameOver = false;
         let particles = [];
+        let clashRings = [];
         let timerSeconds = 60;
         let timerInterval = null;
 
@@ -655,7 +659,7 @@
             }
         }
 
-        // --- 5. RENDER PLAYER & RED SWORD CHARGE AURA ---
+        // --- 5. RENDER PLAYER, AURA & PRESERVE WHITE PATTERNS RED HIT BLENDING ---
         function drawSwordRedAura(img, auraIntensity) {
             const pulse = 0.85 + Math.sin(performance.now() * 0.025) * 0.15;
             const glowRadiusOuter = (14 + auraIntensity * 26) * pulse;
@@ -713,7 +717,8 @@
                 if (!worldM) return;
 
                 const j = jointsObj[name] || { pivotX: 0, pivotY: 0 };
-                const isPartHit = (playerObj.partHitTimers[name] || 0) > 0;
+                const timer = playerObj.partHitTimers[name] || 0;
+                const isPartHit = timer > 0;
 
                 ctx.save();
                 ctx.transform(worldM[0], worldM[1], worldM[2], worldM[3], worldM[4], worldM[5]);
@@ -727,15 +732,41 @@
                     drawSwordRedAura(img, swordAuraIntensity);
                 }
 
-                if (isPartHit) {
-                    if (name === 'sword') {
-                        ctx.filter = 'invert(75%) sepia(95%) saturate(2500%) hue-rotate(5deg) brightness(115%) drop-shadow(0px 0px 10px rgba(250, 204, 21, 0.95))';
-                    } else {
-                        ctx.filter = 'invert(28%) sepia(98%) saturate(6500%) hue-rotate(352deg) brightness(105%) contrast(115%) drop-shadow(0px 0px 8px rgba(239, 68, 68, 0.85))';
-                    }
-                }
+                if (isPartHit && img && img.complete && img.naturalWidth !== 0) {
+                    // 🎯 คำนวณ Fade In เร็ว -> Fade Out อย่างสมูท
+                    const totalDuration = PART_FLASH_DURATION;
+                    const progress = (totalDuration - timer) / totalDuration;
 
-                if (img && img.complete && img.naturalWidth !== 0) {
+                    let redAlpha = 0;
+                    if (progress < 0.6) {
+                        redAlpha = progress / 0.15; // Fast Fade In (0 ถึง 1 ใน 15% แรก)
+                    } else {
+                        redAlpha = 1 - (progress - 0.15) / 0.85; // Fade Out อย่างรวดเร็ว แต่นุ่มนวล
+                    }
+                    redAlpha = Math.max(0, Math.min(1, redAlpha));
+
+                    // 🎨 ใช้ Offscreen Canvas ผสมสีเปลี่ยนเฉพาะส่วนสีดำให้เป็นสีแดง โดยคงส่วนสีขาวไว้ 100%
+                    hitOffscreenCanvas.width = img.width;
+                    hitOffscreenCanvas.height = img.height;
+
+                    hitOffscreenCtx.clearRect(0, 0, img.width, img.height);
+
+                    // 1. วาดรูปต้นฉบับลงไป
+                    hitOffscreenCtx.globalCompositeOperation = 'source-over';
+                    hitOffscreenCtx.drawImage(img, 0, 0);
+
+                    // 2. ใช้ 'lighten' เติมสีแดงลงไป (พิกเซลสีดำ 0 + สีแดง = สีแดง | พิกเซลสีขาว 255 + สีแดง = สีขาวคงเดิม)
+                    hitOffscreenCtx.globalCompositeOperation = 'lighten';
+                    hitOffscreenCtx.fillStyle = `rgba(239, 45, 20, ${redAlpha})`;
+                    hitOffscreenCtx.fillRect(0, 0, img.width, img.height);
+
+                    // 3. ใช้ 'destination-in' ตัดขอบให้ตรงตามขอบโปร่งใสของรูปต้นฉบับ
+                    hitOffscreenCtx.globalCompositeOperation = 'destination-in';
+                    hitOffscreenCtx.drawImage(img, 0, 0);
+
+                    // วาดผลลัพธ์ลงบน Canvas หลัก
+                    ctx.drawImage(hitOffscreenCanvas, -img.width / 2, -img.height / 2);
+                } else if (img && img.complete && img.naturalWidth !== 0) {
                     ctx.drawImage(img, -img.width / 2, -img.height / 2);
                 } else {
                     drawProceduralFallback(name, isPartHit);
@@ -845,23 +876,7 @@
             }
         }
 
-        // --- 6. HIT SPARKS & PARTICLES ---
-        function createHitSparks(x, y, isCritical, chargeMult = 1) {
-            const baseCount = isCritical ? 24 : 14;
-            const count = Math.round(baseCount * chargeMult);
-            for (let i = 0; i < count; i++) {
-                particles.push({
-                    x: x,
-                    y: y,
-                    vx: (Math.random() - 0.5) * (isCritical ? 16 : 11) * chargeMult,
-                    vy: (Math.random() - 0.5) * (isCritical ? 16 : 11) * chargeMult,
-                    size: (Math.random() * 5 + (isCritical ? 3 : 2)) * Math.min(1.3, chargeMult),
-                    color: isCritical ? ['#ef4444', '#dc2626', '#000000', '#f59e0b'] : ['#000000', '#ef4444', '#f59e0b'],
-                    life: 22
-                });
-            }
-        }
-
+        // --- 6. CLASH SPARKS & PARTICLES ---
         function createClashSparks(x, y) {
             for (let i = 0; i < 32; i++) {
                 const angle = Math.random() * Math.PI * 2;
@@ -876,6 +891,14 @@
                     life: 24
                 });
             }
+
+            clashRings.push({
+                x: x,
+                y: y,
+                radius: 8,
+                maxRadius: 58,
+                alpha: 1.0
+            });
         }
 
         function spawnSwordAuraParticles(playerObj) {
@@ -909,9 +932,26 @@
                 p.life--;
                 if (p.life <= 0) particles.splice(i, 1);
             }
+
+            for (let i = clashRings.length - 1; i >= 0; i--) {
+                let ring = clashRings[i];
+                ring.radius += (ring.maxRadius - ring.radius) * 0.28;
+                ring.alpha -= 0.08;
+                if (ring.alpha <= 0) clashRings.splice(i, 1);
+            }
         }
 
         function drawParticles() {
+            clashRings.forEach(ring => {
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(ring.x, ring.y, ring.radius, 0, Math.PI * 2);
+                ctx.strokeStyle = `rgba(245, 158, 11, ${Math.max(0, ring.alpha)})`;
+                ctx.lineWidth = 4;
+                ctx.stroke();
+                ctx.restore();
+            });
+
             particles.forEach(p => {
                 ctx.beginPath();
                 ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
@@ -1008,6 +1048,7 @@
                     defender.hp = Math.max(0, defender.hp - finalDamage);
                     defender.hitCooldown = 16;
 
+                    // แสดงชิ้นส่วนที่โดนฟันเป็นสีแดงพร้อม Animation
                     defender.partHitTimers[detectedHit.name] = PART_FLASH_DURATION;
 
                     attacker.slashState = 'retract';
@@ -1015,7 +1056,6 @@
                     const knockbackDist = (isCritical ? 40 : 22) * chargeMultiplier;
                     defender.x += attacker.facingDir * knockbackDist;
 
-                    createHitSparks(detectedHit.pos.x, detectedHit.pos.y, isCritical, chargeMultiplier);
                     updateHpBars();
 
                     if (defender.hp <= 0 && !gameOver) {
@@ -1076,6 +1116,7 @@
             p2.slashState = 'idle';
             p2.slashAngle = 0;
             particles = [];
+            clashRings = [];
             timerSeconds = 60;
             document.getElementById('timerText').textContent = timerSeconds;
             gameOver = false;
