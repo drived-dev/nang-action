@@ -1,12 +1,33 @@
 // =========================================================================
-// 🎮 3. KEYBOARD & CLICK INPUTS (รับค่าการกดปุ่มและการควบคุมตัวละคร)
+// 🎮 3. KEYBOARD, MENU BUTTONS & CLICK INPUTS
 // =========================================================================
 
 function setupInputListeners() {
+    // ปุ่มในหน้า Start Menu และหน้า Tutorial Placeholder
+    // ทั้งปุ่ม GAME START และปุ่ม TUTORIAL จะพาเข้าสู่หน้า Tutorial Placeholder ก่อนตามที่ต้องการ
+    document.getElementById('btnGameStart').addEventListener('click', () => {
+        showTutorialScreen();
+    });
+
+    document.getElementById('btnTutorial').addEventListener('click', () => {
+        showTutorialScreen();
+    });
+
+    document.getElementById('btnBackToMenu').addEventListener('click', () => {
+        showMenuScreen();
+    });
+
+    document.getElementById('btnSkipToFight').addEventListener('click', () => {
+        startBattleArena();
+    });
+
     window.addEventListener('keydown', (e) => {
         keys[e.key.toLowerCase()] = true;
         keys[e.key] = true;
         keys[e.code] = true;
+
+        // รับคำสั่งเฉพาะเมื่ออยู่ในโหมดการเล่นจริง ('playing') เท่านั้น
+        if (gameScreen !== 'playing') return;
 
         if (gameOver) {
             // หลังจบเกมผ่านไปสักครู่ กด R, Space หรือ Enter เพื่อเริ่มเกมใหม่ได้
@@ -31,6 +52,8 @@ function setupInputListeners() {
         keys[e.key] = false;
         keys[e.code] = false;
 
+        if (gameScreen !== 'playing') return;
+
         if (!gameOver) {
             if (e.code === 'Space') {
                 releaseChargeAndSlash(p1);
@@ -43,13 +66,15 @@ function setupInputListeners() {
 
     // คลิกเมาส์ที่หน้าจอประกาศผลเพื่อเริ่มรอบใหม่ได้เช่นกัน
     window.addEventListener('mousedown', () => {
-        if (gameOver && gameOverTimer > 60) {
+        if (gameScreen === 'playing' && gameOver && gameOverTimer > 60) {
             restartGame();
         }
     });
 }
 
 function handlePlayerControls() {
+    if (gameScreen !== 'playing') return;
+
     // P1 HAND CONTROL (Q/E)
     if (keys['q'] || keys['Q']) {
         p1.handAimAngle = Math.max(HAND_MIN_ANGLE, p1.handAimAngle - HAND_CONTROL_SPEED);

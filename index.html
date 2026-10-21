@@ -11,12 +11,103 @@
 
 <body class="relative h-screen w-screen overflow-hidden bg-white text-slate-900 flex flex-col justify-between">
 
-    <!-- Canvas Fullscreen Stage -->
+    <!-- ==================== 1. START MENU SCREEN ==================== -->
+    <div id="startScreen" class="fixed inset-0 z-40 menu-grid-bg flex flex-col items-center justify-center select-none">
+
+        <!-- โลโก้ NANG ACTION ปรับแก้เส้น Path ให้มีรอยหยักและสัดส่วนตรงตามดีไซน์ 100% -->
+        <div class="w-[85%] max-w-[580px] mb-10 sm:mb-12 pointer-events-none">
+            <svg viewBox="0 0 680 250" class="w-full h-auto overflow-visible">
+                <g transform="translate(35, 0) skewX(-12)" fill="none" stroke="#000000" stroke-width="11"
+                    stroke-linecap="square" stroke-linejoin="miter">
+                    <!-- แถวบน: N A N G -->
+                    <!-- N -->
+                    <path d="M 115 102 L 115 12 L 175 12 L 175 102" />
+                    <path d="M 140 45 L 150 55" stroke-width="8" /> <!-- รายละเอียดรอยหยักตัว N -->
+
+                    <!-- A (มีรอยเว้าหักมุมตามต้นฉบับ) -->
+                    <path d="M 215 102 L 215 36 L 235 12 L 275 12 L 275 102" />
+                    <path d="M 215 62 L 275 62" />
+                    <path d="M 240 36 L 250 46" stroke-width="7" />
+
+                    <!-- N -->
+                    <path d="M 315 102 L 315 12 L 375 12 L 375 102" />
+
+                    <!-- G (มีรอยหยักเว้าด้านขวาตามต้นฉบับ) -->
+                    <path
+                        d="M 475 38 L 475 22 C 475 12 465 12 440 12 C 412 12 405 20 405 57 C 405 94 412 102 440 102 C 465 102 475 92 475 78 L 475 58 L 442 58" />
+                    <path d="M 442 78 L 475 78" /> <!-- รอยหยักเว้าตัว G -->
+
+                    <!-- แถวล่าง: A C T I O N -->
+                    <!-- A -->
+                    <path d="M 15 212 L 15 146 L 35 122 L 75 122 L 75 212" />
+                    <path d="M 15 172 L 75 172" />
+
+                    <!-- C -->
+                    <path
+                        d="M 172 142 C 172 122 160 122 138 122 C 112 122 105 130 105 167 C 105 204 112 212 138 212 C 160 212 172 212 172 192" />
+
+                    <!-- T -->
+                    <path d="M 205 122 L 272 122 M 238 122 L 238 212" />
+
+                    <!-- I -->
+                    <path d="M 308 122 L 348 122 M 328 122 L 328 212 M 308 212 L 348 212" />
+
+                    <!-- O -->
+                    <path
+                        d="M 418 122 C 392 122 385 130 385 167 C 385 204 392 212 418 212 C 444 212 451 204 451 167 C 451 130 444 122 418 122 Z" />
+
+                    <!-- N -->
+                    <path d="M 488 212 L 488 122 L 548 122 L 548 212" />
+                </g>
+            </svg>
+        </div>
+
+        <!-- ปุ่มกด GAME START และ TUTORIAL -->
+        <div class="flex flex-col items-center gap-6">
+            <button id="btnGameStart"
+                class="stepped-btn bg-[#f5c400] hover:bg-[#eab308] active:scale-95 text-black arcade-win-font text-xs sm:text-sm md:text-base tracking-[0.2em] w-60 sm:w-68 py-4 transition-transform cursor-pointer">
+                GAME START
+            </button>
+
+            <button id="btnTutorial"
+                class="stepped-btn bg-black hover:bg-neutral-800 active:scale-95 text-white arcade-win-font text-xs sm:text-sm md:text-base tracking-[0.2em] w-60 sm:w-68 py-4 transition-transform cursor-pointer">
+                TUTORIAL
+            </button>
+        </div>
+    </div>
+
+    <!-- ==================== 2. TUTORIAL PLACEHOLDER SCREEN ==================== -->
+    <div id="tutorialScreen"
+        class="hidden fixed inset-0 z-40 menu-grid-bg flex flex-col items-center justify-center p-6 select-none">
+        <div
+            class="bg-white/95 border-4 border-black p-8 sm:p-10 max-w-lg w-full text-center space-y-6 shadow-[8px_8px_0px_#000000]">
+            <h2 class="arcade-win-font text-xl sm:text-2xl text-black tracking-widest">TUTORIAL</h2>
+
+            <div
+                class="border-2 border-dashed border-slate-400 bg-slate-50 py-10 px-4 text-slate-700 font-bold text-sm sm:text-base space-y-2">
+                <p>🛠️ [ TUTORIAL PLACEHOLDER ]</p>
+                <p class="text-xs text-slate-500 font-normal">พื้นที่สำหรับใส่ขั้นตอนการฝึกสอนเชิดหุ่นและวิธีบังคับ</p>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-4 justify-center pt-2">
+                <button id="btnBackToMenu"
+                    class="stepped-btn bg-black hover:bg-neutral-800 active:scale-95 text-white arcade-win-font text-[11px] sm:text-xs tracking-[0.18em] px-6 py-3.5 transition-transform cursor-pointer">
+                    BACK
+                </button>
+                <button id="btnSkipToFight"
+                    class="stepped-btn bg-[#f5c400] hover:bg-[#eab308] active:scale-95 text-black arcade-win-font text-[11px] sm:text-xs tracking-[0.18em] px-6 py-3.5 transition-transform cursor-pointer">
+                    START FIGHT!
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 3. BATTLE ARENA CANVAS & HUD ==================== -->
     <canvas id="stageCanvas" class="absolute inset-0 w-full h-full z-0"></canvas>
 
     <!-- Top Responsive Retro Arcade HUD Header -->
     <div id="topHud"
-        class="relative z-10 w-full px-4 pt-3 pb-1 sm:px-8 sm:pt-4 md:px-12 flex items-center justify-between gap-3 pointer-events-none transition-opacity duration-200">
+        class="relative z-10 w-full px-4 pt-3 pb-1 sm:px-8 sm:pt-4 md:px-12 flex items-center justify-between gap-3 pointer-events-none transition-opacity duration-200 opacity-0">
 
         <!-- PLAYER 1 HUD (LEFT) -->
         <div class="flex items-center gap-2 sm:gap-3 flex-1 max-w-[45%] justify-start">
@@ -76,7 +167,7 @@
 
     <!-- Solid Black Floor Bar at Bottom -->
     <div id="bottomFloorBar"
-        class="relative z-10 w-full h-10 sm:h-12 md:h-14 bg-black border-t-4 border-black shrink-0 transition-opacity duration-200">
+        class="relative z-10 w-full h-10 sm:h-12 md:h-14 bg-black border-t-4 border-black shrink-0 transition-opacity duration-200 opacity-0">
     </div>
 
     <!-- โหลดไฟล์แยกตามหมวดหมู่ฟังก์ชัน -->

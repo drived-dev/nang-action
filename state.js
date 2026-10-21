@@ -1,5 +1,5 @@
 // =========================================================================
-// 📦 สถานะของเกม ผู้เล่น การโหลดรูปภาพ และตั้งค่าขนาด Canvas
+// 📦 สถานะของเกม หน้าจอเมนู ผู้เล่น การโหลดรูปภาพ และตั้งค่าขนาด Canvas
 // =========================================================================
 const canvas = document.getElementById('stageCanvas');
 const ctx = canvas.getContext('2d');
@@ -48,6 +48,7 @@ let p1 = createPlayerState(0.28, 1);
 let p2 = createPlayerState(0.72, -1);
 
 let keys = {};
+let gameScreen = 'menu'; // 'menu' | 'tutorial' | 'playing'
 let gameOver = false;
 let winnerBannerText = '';
 let winnerPlayer = null;
@@ -69,6 +70,30 @@ componentNames.forEach(name => {
     img.src = `Body_Component/${name}.png`;
     images[name] = img;
 });
+
+// --- ฟังก์ชันจัดการสลับหน้าจอ (Menu -> Tutorial -> Playing) ---
+function showMenuScreen() {
+    gameScreen = 'menu';
+    document.getElementById('startScreen').classList.remove('hidden');
+    document.getElementById('tutorialScreen').classList.add('hidden');
+    document.getElementById('topHud').classList.add('opacity-0');
+    document.getElementById('bottomFloorBar').classList.add('opacity-0');
+}
+
+function showTutorialScreen() {
+    gameScreen = 'tutorial';
+    document.getElementById('startScreen').classList.add('hidden');
+    document.getElementById('tutorialScreen').classList.remove('hidden');
+    document.getElementById('topHud').classList.add('opacity-0');
+    document.getElementById('bottomFloorBar').classList.add('opacity-0');
+}
+
+function startBattleArena() {
+    gameScreen = 'playing';
+    document.getElementById('startScreen').classList.add('hidden');
+    document.getElementById('tutorialScreen').classList.add('hidden');
+    restartGame();
+}
 
 // --- 2. CANVAS SETUP & DYNAMIC SCALING ---
 function resizeCanvas() {

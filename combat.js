@@ -47,24 +47,21 @@ function spawnDetachedParts(loserObj, jointsObj) {
     const floorBaseY = canvas.height - 14;
     const partNames = Object.keys(jointsObj);
 
-    // กระจายตำแหน่งแนวนอนบนพื้นให้ชิ้นส่วนเรียงตัวสวยเต็มด้านล่างจอเหมือนในภาพตัวอย่าง
     const totalParts = partNames.length;
 
     partNames.forEach((name, idx) => {
         const m = loserObj.worldTransforms[name] || [1, 0, 0, 1, 0, 0];
         const j = jointsObj[name] || { pivotX: 0, pivotY: 0, zIndex: 10 };
 
-        // คำนวณตำแหน่ง World ปัจจุบันของชิ้นส่วนนั้นก่อนหลุดออกจากกัน
         const worldCenter = localToWorld(loserObj, m, j.pivotX, j.pivotY);
         const baseAngle = Math.atan2(m[1], m[0]) * (loserObj.visualFacingX >= 0 ? 1 : -1);
 
-        // กำหนดความสูงจากพื้นและท่าทางตอนนอนกองบนพื้นของแต่ละชิ้นส่วน
         let groundOffset = 22;
         let targetRestAngle = (Math.random() - 0.5) * 0.6;
 
         if (name === 'sword') {
             groundOffset = 52;
-            targetRestAngle = 1.05; // ดาบวางพาดเฉียงเหมือนในรูป
+            targetRestAngle = 1.05;
         } else if (name === 'upper_body') {
             groundOffset = 48;
             targetRestAngle = -0.35;
@@ -81,11 +78,10 @@ function spawnDetachedParts(loserObj, jointsObj) {
             groundOffset = 16;
         }
 
-        // คำนวณความเร็วแนวนอนให้ชิ้นส่วนกระเด็นกระจายออกซ้าย-ขวาทั่วพื้นด้านล่าง
         const spreadSlot = ((idx + 0.5) / totalParts) * (canvas.width * 0.88) + (canvas.width * 0.06);
         const targetX = spreadSlot + (Math.random() - 0.5) * 45;
         const vx = (targetX - worldCenter.x) * 0.028 + (Math.random() - 0.5) * 4;
-        const vy = -Math.random() * 7 - 2; // กระดอนขึ้นเล็กน้อยก่อนร่วงลงพื้น
+        const vy = -Math.random() * 7 - 2;
 
         detachedParts.push({
             name: name,
@@ -118,7 +114,6 @@ function updateDetachedParts() {
         p.y += p.vy;
         p.rotation += p.va;
 
-        // ขอบซ้าย-ขวาของหน้าจอ
         const margin = 45;
         if (p.x < margin) {
             p.x = margin;
@@ -128,18 +123,16 @@ function updateDetachedParts() {
             p.vx *= -0.5;
         }
 
-        // ตกกระทบพื้นด้านล่าง
         if (p.y >= p.groundY) {
             p.y = p.groundY;
 
             if (Math.abs(p.vy) > 2.2) {
-                p.vy = -p.vy * 0.28; // กระดอนพื้น
+                p.vy = -p.vy * 0.28;
                 p.vx *= 0.72;
                 p.va *= 0.6;
             } else {
                 p.vy = 0;
                 p.vx *= 0.82;
-                // ค่อยๆ หมุนปรับมุมให้นอนราบกับพื้นอย่างเป็นธรรมชาติ
                 const angleDiff = p.targetRestAngle - p.rotation;
                 p.rotation += angleDiff * 0.18;
                 p.va *= 0.5;
@@ -338,7 +331,6 @@ function updateHpBars() {
     document.getElementById('p2HpBar').style.width = p2Pct + '%';
 }
 
-// เปิดหน้าจอประกาศผลผู้ชนะแบบเต็มจอ (พื้นหลังสีเหลือง + ชิ้นส่วนคนแพ้แยกหล่นลงพื้น)
 function triggerGameOver(winner, loser, bannerText) {
     gameOver = true;
     gameOverTimer = 0;
@@ -346,20 +338,17 @@ function triggerGameOver(winner, loser, bannerText) {
     loserPlayer = loser;
     winnerBannerText = bannerText;
 
-    // ซ่อน HUD และแถบพื้นสีดำเพื่อให้เหมือนภาพตัวอย่าง
     document.getElementById('topHud').classList.add('opacity-0');
     document.getElementById('bottomFloorBar').classList.add('opacity-0');
 
-    // รีเซ็ตท่าทางของผู้ชนะให้กลับมาตั้งท่าปกติอย่างสง่างาม
     winnerPlayer.isCharging = false;
     winnerPlayer.isSlashing = false;
     winnerPlayer.slashState = 'idle';
     winnerPlayer.slashAngle = 0;
     winnerPlayer.activeSlashAura = 0;
     winnerPlayer.partHitTimers = {};
-    winnerPlayer.facingDir = 1; // หันหน้าไปทางขวาตามภาพตัวอย่าง
+    winnerPlayer.facingDir = 1;
 
-    // สั่งแยกชิ้นส่วนข้อต่อทั้งหมดของผู้แพ้ให้หล่นลงพื้น
     const loserJoints = (loser === p1) ? p1Joints : p2Joints;
     spawnDetachedParts(loser, loserJoints);
 }
@@ -483,7 +472,8 @@ function updatePartTimers(playerObj) {
 
 function startRoundTimer() {
     timerInterval = setInterval(() => {
-        if (!gameOver && timerSeconds > 0) {
+        // นับเวลาถอยหลังเฉพาะเมื่ออยู่ในหน้าต่อสู้ ('playing') เท่านั้น
+        if (gameScreen === 'playing' && !gameOver && timerSeconds > 0) {
             timerSeconds--;
             document.getElementById('timerText').textContent = timerSeconds;
             if (timerSeconds === 0) {
