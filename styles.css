@@ -1,0 +1,21 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Kanit:wght@800;900&display=swap');
+
+body {
+    margin: 0;
+    overflow: hidden;
+    background-color: #ffffff;
+    font-family: 'Kanit', sans-serif;
+    user-select: none;
+}
+
+canvas {
+    display: block;
+}
+
+.pixel-font {
+    font-family: 'VT323', monospace;
+}
+
+.arcade-win-font {
+    font-family: 'Press Start 2P', 'VT323', monospace;
+}
