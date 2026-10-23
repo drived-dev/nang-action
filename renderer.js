@@ -1,5 +1,5 @@
 // =========================================================================
-// 🎨 5. RENDER PLAYER, AURA & DISMEMBERED RAGDOLL PARTS + 9. MAIN LOOP
+// 🎨 5. RENDER PLAYER, SWORD SLATE BLOCK (#6D8196) & MAIN LOOP
 // =========================================================================
 
 function drawSwordRedAura(img, auraIntensity) {
@@ -38,7 +38,6 @@ function drawSwordRedAura(img, auraIntensity) {
     ctx.restore();
 }
 
-// วาดชิ้นส่วนโดยใช้ 'multiply' เมื่ออยู่ในหน้า Victory สีเหลือง เพื่อให้ลวดลายสีขาวในไฟล์ PNG กลายเป็นสีเหลืองทองกลืนกับพื้นหลัง
 function drawImageWithYellowKey(img) {
     ctx.save();
     if (gameOver) {
@@ -88,13 +87,13 @@ function renderPlayer(playerObj, jointsObj) {
             const totalDuration = PART_FLASH_DURATION;
             const progress = (totalDuration - timer) / totalDuration;
 
-            let redAlpha = 0;
+            let flashAlpha = 0;
             if (progress < 0.15) {
-                redAlpha = progress / 0.15;
+                flashAlpha = progress / 0.15;
             } else {
-                redAlpha = 1 - (progress - 0.15) / 0.85;
+                flashAlpha = 1 - (progress - 0.15) / 0.85;
             }
-            redAlpha = Math.max(0, Math.min(1, redAlpha));
+            flashAlpha = Math.max(0, Math.min(1, flashAlpha));
 
             hitOffscreenCanvas.width = img.width;
             hitOffscreenCanvas.height = img.height;
@@ -104,8 +103,14 @@ function renderPlayer(playerObj, jointsObj) {
             hitOffscreenCtx.globalCompositeOperation = 'source-over';
             hitOffscreenCtx.drawImage(img, 0, 0);
 
+            // ถ้าเป็นดาบ (เกิดการ Block) ให้เปลี่ยนเป็นสี Slate #6D8196 (rgb 109, 129, 150)
+            // ถ้าเป็นชิ้นส่วนร่างกายโดนฟัน ให้เปลี่ยนเป็นสีแดง
             hitOffscreenCtx.globalCompositeOperation = 'lighten';
-            hitOffscreenCtx.fillStyle = `rgba(239, 45, 20, ${redAlpha})`;
+            if (name === 'sword') {
+                hitOffscreenCtx.fillStyle = `rgba(109, 129, 150, ${flashAlpha})`;
+            } else {
+                hitOffscreenCtx.fillStyle = `rgba(239, 45, 20, ${flashAlpha})`;
+            }
             hitOffscreenCtx.fillRect(0, 0, img.width, img.height);
 
             hitOffscreenCtx.globalCompositeOperation = 'destination-in';
@@ -126,7 +131,6 @@ function renderPlayer(playerObj, jointsObj) {
 
 function drawPuppetSticks(playerObj, worldTransforms) {
     ctx.save();
-    // เปลี่ยนสีไม้เชิดหุ่นเป็นสีน้ำตาลทองเมื่ออยู่ในหน้าจอผู้ชนะสีเหลืองตามภาพตัวอย่าง
     ctx.strokeStyle = gameOver ? '#9a7b00' : '#a1a1aa';
     ctx.lineWidth = gameOver ? 5 : 4;
 
@@ -142,7 +146,6 @@ function drawPuppetSticks(playerObj, worldTransforms) {
         const rh = worldTransforms['right_hand'];
         ctx.beginPath();
         ctx.moveTo(rh[4], rh[5]);
-        // ให้ไม้เชิดมือเอียงลงมาตามแนวธรรมชาติเหมือนในภาพตัวอย่าง
         ctx.lineTo(rh[4] - 75, 2000);
         ctx.stroke();
     }
@@ -151,7 +154,8 @@ function drawPuppetSticks(playerObj, worldTransforms) {
 }
 
 function drawProceduralFallback(name, isPartHit = false) {
-    const hitColor = (name === 'sword') ? '#facc15' : '#ef4444';
+    // ตอน Block ดาบจะเปลี่ยนเป็นสี #6D8196
+    const hitColor = (name === 'sword') ? '#6D8196' : '#ef4444';
     const innerDetailColor = gameOver ? VICTORY_BG_COLOR : '#ffffff';
     ctx.fillStyle = isPartHit ? hitColor : '#000000';
     ctx.strokeStyle = isPartHit ? hitColor : '#000000';
@@ -248,16 +252,6 @@ function renderDetachedParts() {
 }
 
 function drawParticles() {
-    clashRings.forEach(ring => {
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(ring.x, ring.y, ring.radius, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(245, 158, 11, ${Math.max(0, ring.alpha)})`;
-        ctx.lineWidth = 4;
-        ctx.stroke();
-        ctx.restore();
-    });
-
     particles.forEach(p => {
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
@@ -273,17 +267,18 @@ function renderVictoryBanner() {
     ctx.textBaseline = 'top';
 
     const fontSize = Math.min(Math.max(canvas.width * 0.045, 36), 68);
-    ctx.font = `900 ${fontSize}px "Press Start 2P", "VT323", monospace`;
+    ctx.font = `900 ${fontSize}px "Silkscreen", "Press Start 2P", monospace`;
     ctx.fillText(winnerBannerText, canvas.width * 0.5, canvas.height * 0.08);
     ctx.restore();
 }
 
 // --- 9. MAIN LOOP ---
 function update() {
+    if (gameScreen !== 'playing') return;
+
     if (gameOver) {
         gameOverTimer++;
 
-        // เลื่อนผู้ชนะมาอยู่ตรงกลางหน้าจออย่างนุ่มนวลและตั้งท่าปกติ
         if (winnerPlayer) {
             const targetWinX = canvas.width * 0.48;
             const targetWinY = canvas.height * 0.50;
@@ -298,7 +293,6 @@ function update() {
             updatePlayerTransforms(winnerPlayer, winnerJoints);
         }
 
-        // อัปเดตฟิสิกส์ชิ้นส่วนของผู้แพ้ที่ร่วงลงพื้น
         updateDetachedParts();
         updateParticles();
         return;
@@ -320,10 +314,14 @@ function update() {
 
     handlePlayerControls();
 
+    // บังคับไม่ให้ตัวละครเดินทะลุผ่านกันได้
+    resolvePlayerBodyCollision(p1, p2);
+
     processSlashAndCollisions();
 
     if (!gameOver) {
-        // Boundaries
+        resolvePlayerBodyCollision(p1, p2);
+
         p1.x = Math.max(80, Math.min(canvas.width - 80, p1.x));
         p1.y = Math.max(120, Math.min(canvas.height - 120, p1.y));
         p2.x = Math.max(80, Math.min(canvas.width - 80, p2.x));
@@ -341,27 +339,20 @@ function update() {
 
 function render() {
     if (gameOver) {
-        // พื้นหลังสีเหลืองทองตามภาพตัวอย่าง
         ctx.fillStyle = VICTORY_BG_COLOR;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // วาดผู้ชนะตรงกลางจอ
-        if (winnerPlayer) {
+        if (winnerPlayer && !isDrawRound) {
             const winnerJoints = (winnerPlayer === p1) ? p1Joints : p2Joints;
             renderPlayer(winnerPlayer, winnerJoints);
         }
 
-        // วาดชิ้นส่วนข้อต่อของผู้แพ้ที่ร่วงลงมากองกับพื้นด้านล่าง
         renderDetachedParts();
-
-        // วาดข้อความ "P1 WIN" / "P2 WIN" ด้านบน
         renderVictoryBanner();
-
         drawParticles();
         return;
     }
 
-    // พื้นหลังตารางปกติขณะต่อสู้
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 

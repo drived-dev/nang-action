@@ -1,10 +1,9 @@
 // =========================================================================
-// 📦 สถานะของเกม หน้าจอเมนู ผู้เล่น การโหลดรูปภาพ และตั้งค่าขนาด Canvas
+// 📦 สถานะของเกม หน้าจอเมนู ตัวละคร จำนวนรอบ (3 รอบ) และตั้งค่า Canvas
 // =========================================================================
 const canvas = document.getElementById('stageCanvas');
 const ctx = canvas.getContext('2d');
 
-// Offscreen Canvas สำหรับประมวลผลสีชิ้นส่วน
 const hitOffscreenCanvas = document.createElement('canvas');
 const hitOffscreenCtx = hitOffscreenCanvas.getContext('2d');
 
@@ -48,13 +47,26 @@ let p1 = createPlayerState(0.28, 1);
 let p2 = createPlayerState(0.72, -1);
 
 let keys = {};
-let gameScreen = 'menu'; // 'menu' | 'tutorial' | 'playing'
+let gameScreen = 'stick_setup'; // 'stick_setup' | 'menu' | 'char_select' | 'tutorial' | 'playing'
+let leftStickConnected = false;
+let rightStickConnected = false;
+
 let gameOver = false;
+let isDrawRound = false;
 let winnerBannerText = '';
 let winnerPlayer = null;
 let loserPlayer = null;
-let detachedParts = []; // เก็บชิ้นส่วนร่างกายของผู้แพ้ที่หลุดออกจากกันและหล่นลงพื้น
+let detachedParts = [];
 let gameOverTimer = 0;
+
+// ระบบนับจำนวนตา (เล่นทั้งหมด 3 รอบ)
+const TOTAL_ROUNDS = 3;
+let currentRound = 1;
+
+// ตอนนี้มีตัวละครเดียวคือ CHALAWAN
+const CHARACTER_ROSTER = ['CHALAWAN'];
+let p1CharIndex = 0;
+let p2CharIndex = 0;
 
 let particles = [];
 let clashRings = [];
@@ -64,35 +76,233 @@ let timerInterval = null;
 // โหลดรูปภาพชิ้นส่วนทั้งหมด
 const componentNames = Object.keys(DEFAULT_JOINTS);
 const images = {};
+let loadedImagesCount = 0;
 
 componentNames.forEach(name => {
     const img = new Image();
     img.src = `Body_Component/${name}.png`;
+    img.onload = () => {
+        loadedImagesCount++;
+        if (loadedImagesCount === componentNames.length) {
+            drawFallbackStickSetupShadow();
+            renderCharacterSelectPreviews();
+        }
+    };
     images[name] = img;
 });
 
-// --- ฟังก์ชันจัดการสลับหน้าจอ (Menu -> Tutorial -> Playing) ---
-function showMenuScreen() {
-    gameScreen = 'menu';
-    document.getElementById('startScreen').classList.remove('hidden');
+// ฟังก์ชันช่วยวาดหุ่นลงบน Canvas พรีวิว (ทั้งกรอบใหญ่ตรงกลางและกรอบเล็กด้านล่าง)
+function drawStaticPuppetOnCanvas(targetCanvas, centerX, centerY, scale, facingDir, showSticks = true) {
+    if (!targetCanvas || typeof updatePlayerTransforms !== 'function') return;
+    const tCtx = targetCanvas.getContext('2d');
+    tCtx.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
+
+    const dummy = createPlayerState(0.5, facingDir);
+    dummy.x = centerX;
+    dummy.y = centerY;
+    dummy.scale = scale;
+    dummy.visualFacingX = facingDir;
+    dummy.walkBlend = 0;
+    dummy.idlePhase = 0;
+
+    updatePlayerTransforms(dummy, DEFAULT_JOINTS);
+
+    tCtx.save();
+    tCtx.translate(dummy.x, dummy.y);
+    tCtx.scale(dummy.scale * dummy.visualFacingX, dummy.scale);
+
+    // วาดไม้เชิดในกรอบพรีวิวใหญ่ตามรูปตัวอย่าง
+    if (showSticks && dummy.worldTransforms['lower_body'] && dummy.worldTransforms['right_hand']) {
+        tCtx.save();
+        tCtx.strokeStyle = '#000000';
+        tCtx.lineWidth = 5;
+
+        const lb = dummy.worldTransforms['lower_body'];
+        tCtx.beginPath();
+        tCtx.moveTo(lb[4], lb[5]);
+        tCtx.lineTo(lb[4], 1000);
+        tCtx.stroke();
+
+        const rh = dummy.worldTransforms['right_hand'];
+        tCtx.beginPath();
+        tCtx.moveTo(rh[4], rh[5]);
+        tCtx.lineTo(rh[4] - 70, 1000);
+        tCtx.stroke();
+        tCtx.restore();
+    }
+
+    const sorted = Object.keys(DEFAULT_JOINTS).sort((a, b) => (DEFAULT_JOINTS[a].zIndex || 0) - (DEFAULT_JOINTS[b].zIndex || 0));
+    sorted.forEach(name => {
+        const m = dummy.worldTransforms[name];
+        const j = DEFAULT_JOINTS[name];
+        const img = images[name];
+        if (!m) return;
+
+        tCtx.save();
+        tCtx.transform(m[0], m[1], m[2], m[3], m[4], m[5]);
+        tCtx.translate(j.pivotX, j.pivotY);
+
+        if (img && img.complete && img.naturalWidth > 0) {
+            tCtx.drawImage(img, -img.width / 2, -img.height / 2);
+        } else if (typeof drawProceduralFallback === 'function') {
+            // วาดรูปทรงสำรองกรณีไม่มีไฟล์รูป
+            tCtx.fillStyle = '#000000';
+            tCtx.beginPath();
+            tCtx.arc(0, 0, 20, 0, Math.PI * 2);
+            tCtx.fill();
+        }
+        tCtx.restore();
+    });
+
+    tCtx.restore();
+}
+
+// วาดรูปพรีวิวในหน้า SELECT YOUR NANG (กรอบใหญ่ซ้าย P1, กรอบใหญ่ขวา P2, และกรอบเล็กด้านล่าง)
+function renderCharacterSelectPreviews() {
+    const p1Canvas = document.getElementById('p1PreviewCanvas');
+    const p2Canvas = document.getElementById('p2PreviewCanvas');
+    const thumb1 = document.getElementById('thumbCanvas1');
+
+    // กรอบใหญ่ซ้าย (P1 หันขวา) และกรอบใหญ่ขวา (P2 หันซ้ายเข้าหากัน)
+    drawStaticPuppetOnCanvas(p1Canvas, 245, 250, 0.72, 1, true);
+    drawStaticPuppetOnCanvas(p2Canvas, 275, 250, 0.72, -1, true);
+
+    // กรอบเล็กด้านล่าง (ซูมช่วงหัวและไหล่เหมือนในรูปต้นฉบับ)
+    drawStaticPuppetOnCanvas(thumb1, 100, 195, 0.78, 1, false);
+}
+
+function drawFallbackStickSetupShadow() {
+    const fbCanvas = document.getElementById('fallbackShadowCanvas');
+    if (!fbCanvas) return;
+    const fbCtx = fbCanvas.getContext('2d');
+    fbCtx.clearRect(0, 0, fbCanvas.width, fbCanvas.height);
+
+    const dummyLeft = createPlayerState(0.35, 1);
+    const dummyRight = createPlayerState(0.65, -1);
+    dummyLeft.x = 250;
+    dummyLeft.y = 260;
+    dummyLeft.scale = 0.56;
+    dummyLeft.walkBlend = 0;
+    dummyLeft.idlePhase = 0;
+
+    dummyRight.x = 510;
+    dummyRight.y = 260;
+    dummyRight.scale = 0.56;
+    dummyRight.walkBlend = 0;
+    dummyRight.idlePhase = 0;
+
+    if (typeof updatePlayerTransforms === 'function') {
+        updatePlayerTransforms(dummyLeft, p1Joints);
+        updatePlayerTransforms(dummyRight, p2Joints);
+
+        [dummyLeft, dummyRight].forEach(dPlayer => {
+            fbCtx.save();
+            fbCtx.translate(dPlayer.x, dPlayer.y);
+            fbCtx.scale(dPlayer.scale * dPlayer.visualFacingX, dPlayer.scale);
+
+            const sorted = Object.keys(DEFAULT_JOINTS).sort((a, b) => (DEFAULT_JOINTS[a].zIndex || 0) - (DEFAULT_JOINTS[b].zIndex || 0));
+            sorted.forEach(name => {
+                const m = dPlayer.worldTransforms[name];
+                const j = DEFAULT_JOINTS[name];
+                const img = images[name];
+                if (m && img && img.complete && img.naturalWidth > 0) {
+                    fbCtx.save();
+                    fbCtx.transform(m[0], m[1], m[2], m[3], m[4], m[5]);
+                    fbCtx.translate(j.pivotX, j.pivotY);
+                    fbCtx.drawImage(img, -img.width / 2, -img.height / 2);
+                    fbCtx.restore();
+                }
+            });
+            fbCtx.restore();
+        });
+    }
+}
+
+function hideAllScreens() {
+    document.getElementById('stickSetupScreen').classList.add('hidden');
+    document.getElementById('startScreen').classList.add('hidden');
+    document.getElementById('charSelectScreen').classList.add('hidden');
     document.getElementById('tutorialScreen').classList.add('hidden');
     document.getElementById('topHud').classList.add('opacity-0');
     document.getElementById('bottomFloorBar').classList.add('opacity-0');
+}
+
+function showStickSetupScreen() {
+    gameScreen = 'stick_setup';
+    hideAllScreens();
+    document.getElementById('stickSetupScreen').classList.remove('hidden');
+    drawFallbackStickSetupShadow();
+}
+
+function showMenuScreen() {
+    gameScreen = 'menu';
+    gameOver = false;
+    hideAllScreens();
+    document.getElementById('startScreen').classList.remove('hidden');
+}
+
+function showCharSelectScreen() {
+    gameScreen = 'char_select';
+    updateCharSelectUI();
+    hideAllScreens();
+    document.getElementById('charSelectScreen').classList.remove('hidden');
+    renderCharacterSelectPreviews();
 }
 
 function showTutorialScreen() {
     gameScreen = 'tutorial';
-    document.getElementById('startScreen').classList.add('hidden');
+    hideAllScreens();
     document.getElementById('tutorialScreen').classList.remove('hidden');
-    document.getElementById('topHud').classList.add('opacity-0');
-    document.getElementById('bottomFloorBar').classList.add('opacity-0');
 }
 
-function startBattleArena() {
+function updateCharSelectUI() {
+    const p1Name = CHARACTER_ROSTER[p1CharIndex] || 'CHALAWAN';
+    const p2Name = CHARACTER_ROSTER[p2CharIndex] || 'CHALAWAN';
+
+    document.getElementById('p1CharName').textContent = p1Name;
+    document.getElementById('p2CharName').textContent = p2Name;
+    document.getElementById('p1HudName').textContent = p1Name;
+    document.getElementById('p2HudName').textContent = p2Name;
+}
+
+// อัปเดตจุด 3 จุดด้านบนตามรอบที่กำลังเล่น (รอบ 1, 2, 3)
+function updateRoundDotsUI() {
+    const dots = [
+        document.getElementById('roundDot1'),
+        document.getElementById('roundDot2'),
+        document.getElementById('roundDot3')
+    ];
+    dots.forEach((dot, idx) => {
+        if (!dot) return;
+        if (idx < currentRound) {
+            dot.classList.remove('bg-white');
+            dot.classList.add('bg-black');
+        } else {
+            dot.classList.remove('bg-black');
+            dot.classList.add('bg-white');
+        }
+    });
+}
+
+function startNewMatch() {
+    currentRound = 1;
     gameScreen = 'playing';
-    document.getElementById('startScreen').classList.add('hidden');
-    document.getElementById('tutorialScreen').classList.add('hidden');
+    hideAllScreens();
+    updateRoundDotsUI();
     restartGame();
+}
+
+// เมื่อจบแต่ละตา: ถ้ายังไม่ครบ 3 รอบให้เริ่มรอบถัดไป ถ้าครบ 3 รอบแล้วให้กลับไปหน้าเริ่มต้น (ที่มี GAME START, TUTORIAL)
+function advanceRoundOrReturnToMenu() {
+    if (currentRound < TOTAL_ROUNDS) {
+        currentRound++;
+        updateRoundDotsUI();
+        restartGame();
+    } else {
+        currentRound = 1;
+        updateRoundDotsUI();
+        showMenuScreen();
+    }
 }
 
 // --- 2. CANVAS SETUP & DYNAMIC SCALING ---

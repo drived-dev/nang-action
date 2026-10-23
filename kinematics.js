@@ -1,5 +1,5 @@
 // =========================================================================
-// 📐 4. KINEMATICS & MATRIX CALCULATIONS
+// 📐 4. KINEMATICS, MATRIX CALCULATIONS & BODY-TO-BODY COLLISION
 // =========================================================================
 
 function multiplyMatrix(m1, m2) {
@@ -230,6 +230,8 @@ function segmentToSegmentCollision(A, B, C, D) {
 
     return {
         distance: Math.sqrt(dx * dx + dy * dy),
+        closestOnAB: closestOnAB,
+        closestOnCD: closestOnCD,
         contactPoint: {
             x: (closestOnAB.x + closestOnCD.x) * 0.5,
             y: (closestOnAB.y + closestOnCD.y) * 0.5
@@ -314,6 +316,67 @@ function updatePlayerTransforms(playerObj, jointsObj) {
             { a: hiltWorld, b: midWorld, radius: bladeRadius },
             { a: midWorld, b: tipWorld, radius: bladeRadius }
         ];
+    }
+}
+
+// ป้องกันไม่ให้ตัวละครเดินทะลุผ่านกัน ไม่ว่าชิ้นส่วนใดของร่างกายจะชนกัน
+function resolvePlayerBodyCollision(p1Obj, p2Obj) {
+    updatePlayerTransforms(p1Obj, p1Joints);
+    updatePlayerTransforms(p2Obj, p2Joints);
+
+    let maxOverlap = 0;
+    let pushX = 0;
+    let pushY = 0;
+
+    for (const caps1 of Object.values(p1Obj.bodyCapsulesWorld)) {
+        for (const c1 of caps1) {
+            for (const caps2 of Object.values(p2Obj.bodyCapsulesWorld)) {
+                for (const c2 of caps2) {
+                    const res = segmentToSegmentCollision(c1.a, c1.b, c2.a, c2.b);
+                    // ใช้รัศมีสัมผัส 82% ของ Hitbox เพื่อให้รูปทรงสีดำชนติดกันพอดีโดยไม่ลอยห่างกัน
+                    const minAllowedDist = (c1.radius + c2.radius) * 0.82;
+
+                    if (res.distance < minAllowedDist) {
+                        const overlap = minAllowedDist - res.distance;
+                        if (overlap > maxOverlap) {
+                            maxOverlap = overlap;
+                            let dx = res.closestOnAB.x - res.closestOnCD.x;
+                            let dy = res.closestOnAB.y - res.closestOnCD.y;
+                            const len = Math.sqrt(dx * dx + dy * dy);
+                            if (len > 0.001) {
+                                pushX = dx / len;
+                                pushY = dy / len;
+                            } else {
+                                pushX = (p1Obj.x <= p2Obj.x) ? -1 : 1;
+                                pushY = 0;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (maxOverlap > 0) {
+        const p1Speed = Math.abs(p1Obj.vx) + Math.abs(p1Obj.vy);
+        const p2Speed = Math.abs(p2Obj.vx) + Math.abs(p2Obj.vy);
+        const totalSpeed = p1Speed + p2Speed;
+
+        // ฝั่งที่เดินพุ่งเข้ามาชนจะถูกดันกลับออกไปไม่ให้เดินทะลุผ่านอีกฝ่ายได้
+        let p1Share = 0.5;
+        let p2Share = 0.5;
+        if (totalSpeed > 0) {
+            p1Share = p1Speed / totalSpeed;
+            p2Share = p2Speed / totalSpeed;
+        }
+
+        p1Obj.x += pushX * maxOverlap * p1Share;
+        p1Obj.y += pushY * maxOverlap * p1Share;
+        p2Obj.x -= pushX * maxOverlap * p2Share;
+        p2Obj.y -= pushY * maxOverlap * p2Share;
+
+        updatePlayerTransforms(p1Obj, p1Joints);
+        updatePlayerTransforms(p2Obj, p2Joints);
     }
 }
 

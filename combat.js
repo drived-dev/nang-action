@@ -1,5 +1,5 @@
 // =========================================================================
-// ⚔️ ระบบการต่อสู้ ชาร์จพลัง ดาบปะทะกัน และฟิสิกส์ชิ้นส่วนผู้แพ้หล่นลงพื้น
+// ⚔️ ระบบการต่อสู้ Block ดาบอัตโนมัติ (เปลี่ยนสีดาบเป็น #6D8196 โดยไม่มี Particle)
 // =========================================================================
 
 function getSwordAuraIntensity(playerObj) {
@@ -39,22 +39,20 @@ function releaseChargeAndSlash(playerObj) {
     }
 }
 
-// --- 6. DISMEMBERMENT PHYSICS (ข้อต่อผู้แพ้แยกออกจากกันและหล่นลงพื้น) ---
-function spawnDetachedParts(loserObj, jointsObj) {
-    detachedParts = [];
-    updatePlayerTransforms(loserObj, jointsObj);
+// --- 6. DISMEMBERMENT PHYSICS ---
+function appendDetachedPartsForPlayer(targetObj, jointsObj, xMinRatio = 0.06, xSpanRatio = 0.88) {
+    updatePlayerTransforms(targetObj, jointsObj);
 
     const floorBaseY = canvas.height - 14;
     const partNames = Object.keys(jointsObj);
-
     const totalParts = partNames.length;
 
     partNames.forEach((name, idx) => {
-        const m = loserObj.worldTransforms[name] || [1, 0, 0, 1, 0, 0];
+        const m = targetObj.worldTransforms[name] || [1, 0, 0, 1, 0, 0];
         const j = jointsObj[name] || { pivotX: 0, pivotY: 0, zIndex: 10 };
 
-        const worldCenter = localToWorld(loserObj, m, j.pivotX, j.pivotY);
-        const baseAngle = Math.atan2(m[1], m[0]) * (loserObj.visualFacingX >= 0 ? 1 : -1);
+        const worldCenter = localToWorld(targetObj, m, j.pivotX, j.pivotY);
+        const baseAngle = Math.atan2(m[1], m[0]) * (targetObj.visualFacingX >= 0 ? 1 : -1);
 
         let groundOffset = 22;
         let targetRestAngle = (Math.random() - 0.5) * 0.6;
@@ -78,8 +76,8 @@ function spawnDetachedParts(loserObj, jointsObj) {
             groundOffset = 16;
         }
 
-        const spreadSlot = ((idx + 0.5) / totalParts) * (canvas.width * 0.88) + (canvas.width * 0.06);
-        const targetX = spreadSlot + (Math.random() - 0.5) * 45;
+        const spreadSlot = ((idx + 0.5) / totalParts) * (canvas.width * xSpanRatio) + (canvas.width * xMinRatio);
+        const targetX = spreadSlot + (Math.random() - 0.5) * 40;
         const vx = (targetX - worldCenter.x) * 0.028 + (Math.random() - 0.5) * 4;
         const vy = -Math.random() * 7 - 2;
 
@@ -92,15 +90,20 @@ function spawnDetachedParts(loserObj, jointsObj) {
             rotation: baseAngle,
             va: (Math.random() - 0.5) * 0.16,
             targetRestAngle: targetRestAngle,
-            scale: loserObj.scale,
-            facingX: loserObj.facingDir,
-            groundY: floorBaseY - groundOffset * loserObj.scale,
+            scale: targetObj.scale,
+            facingX: targetObj.facingDir,
+            groundY: floorBaseY - groundOffset * targetObj.scale,
             zIndex: j.zIndex || 10,
             settled: false
         });
     });
 
     detachedParts.sort((a, b) => a.zIndex - b.zIndex);
+}
+
+function spawnDetachedParts(loserObj, jointsObj) {
+    detachedParts = [];
+    appendDetachedPartsForPlayer(loserObj, jointsObj, 0.06, 0.88);
 }
 
 function updateDetachedParts() {
@@ -147,31 +150,7 @@ function updateDetachedParts() {
     });
 }
 
-// --- 7. CLASH SPARKS & PARTICLES ---
-function createClashSparks(x, y) {
-    for (let i = 0; i < 32; i++) {
-        const angle = Math.random() * Math.PI * 2;
-        const speed = Math.random() * 11 + 3;
-        particles.push({
-            x: x,
-            y: y,
-            vx: Math.cos(angle) * speed,
-            vy: Math.sin(angle) * speed,
-            size: Math.random() * 5.5 + 2.5,
-            color: ['#facc15', '#f59e0b', '#ffffff', '#000000'],
-            life: 24
-        });
-    }
-
-    clashRings.push({
-        x: x,
-        y: y,
-        radius: 8,
-        maxRadius: 58,
-        alpha: 1.0
-    });
-}
-
+// --- 7. SWORD CHARGE AURA PARTICLES ---
 function spawnSwordAuraParticles(playerObj) {
     const intensity = getSwordAuraIntensity(playerObj);
     if (intensity <= 0.01 || playerObj.swordSegmentsWorld.length === 0) return;
@@ -203,40 +182,34 @@ function updateParticles() {
         p.life--;
         if (p.life <= 0) particles.splice(i, 1);
     }
-
-    for (let i = clashRings.length - 1; i >= 0; i--) {
-        let ring = clashRings[i];
-        ring.radius += (ring.maxRadius - ring.radius) * 0.28;
-        ring.alpha -= 0.08;
-        if (ring.alpha <= 0) clashRings.splice(i, 1);
-    }
 }
 
-// --- 8. SWORD CLASH & HITBOX DETECTION ---
+// --- 8. PASSIVE SWORD BLOCK & HITBOX DETECTION ---
+// ตอน Block เอา Particle กลมๆ ที่กระจายออกมาออกทั้งหมด ทำแค่เปลี่ยนสีดาบเป็น #6D8196
 function checkSwordClash(p1Obj, p2Obj) {
-    const bothSlashing = p1Obj.isSlashing && p2Obj.isSlashing;
-    const activeSwing = (p1Obj.slashState === 'swing' || p2Obj.slashState === 'swing');
+    const p1Swinging = p1Obj.isSlashing && p1Obj.slashState === 'swing';
+    const p2Swinging = p2Obj.isSlashing && p2Obj.slashState === 'swing';
 
-    if (bothSlashing && activeSwing && p1Obj.clashCooldown <= 0 && p2Obj.clashCooldown <= 0) {
+    if ((p1Swinging || p2Swinging) && p1Obj.clashCooldown <= 0 && p2Obj.clashCooldown <= 0) {
         for (const seg1 of p1Obj.swordSegmentsWorld) {
             for (const seg2 of p2Obj.swordSegmentsWorld) {
                 const res = segmentToSegmentCollision(seg1.a, seg1.b, seg2.a, seg2.b);
                 const clashThreshold = seg1.radius + seg2.radius + 6;
 
                 if (res.distance <= clashThreshold) {
-                    p1Obj.slashState = 'retract';
-                    p2Obj.slashState = 'retract';
+                    if (p1Swinging) p1Obj.slashState = 'retract';
+                    if (p2Swinging) p2Obj.slashState = 'retract';
 
                     p1Obj.clashCooldown = 14;
                     p2Obj.clashCooldown = 14;
 
+                    // สั่งให้ดาบเปลี่ยนสีเป็นสี Slate #6D8196 (จัดการใน renderer.js)
                     p1Obj.partHitTimers['sword'] = PART_FLASH_DURATION;
                     p2Obj.partHitTimers['sword'] = PART_FLASH_DURATION;
 
                     p1Obj.x -= p1Obj.facingDir * CLASH_KNOCKBACK;
                     p2Obj.x -= p2Obj.facingDir * CLASH_KNOCKBACK;
 
-                    createClashSparks(res.contactPoint.x, res.contactPoint.y);
                     return true;
                 }
             }
@@ -301,7 +274,6 @@ function checkHits(attacker, defender) {
             defender.hitCooldown = 16;
 
             defender.partHitTimers[detectedHit.name] = PART_FLASH_DURATION;
-
             attacker.slashState = 'retract';
 
             const knockbackDist = (isCritical ? 40 : 22) * chargeMultiplier;
@@ -333,6 +305,7 @@ function updateHpBars() {
 
 function triggerGameOver(winner, loser, bannerText) {
     gameOver = true;
+    isDrawRound = false;
     gameOverTimer = 0;
     winnerPlayer = winner;
     loserPlayer = loser;
@@ -351,6 +324,22 @@ function triggerGameOver(winner, loser, bannerText) {
 
     const loserJoints = (loser === p1) ? p1Joints : p2Joints;
     spawnDetachedParts(loser, loserJoints);
+}
+
+function triggerDrawGameOver() {
+    gameOver = true;
+    isDrawRound = true;
+    gameOverTimer = 0;
+    winnerPlayer = null;
+    loserPlayer = null;
+    winnerBannerText = 'DRAW';
+
+    document.getElementById('topHud').classList.add('opacity-0');
+    document.getElementById('bottomFloorBar').classList.add('opacity-0');
+
+    detachedParts = [];
+    appendDetachedPartsForPlayer(p1, p1Joints, 0.05, 0.43);
+    appendDetachedPartsForPlayer(p2, p2Joints, 0.52, 0.43);
 }
 
 function restartGame() {
@@ -396,6 +385,7 @@ function restartGame() {
     detachedParts = [];
     winnerPlayer = null;
     loserPlayer = null;
+    isDrawRound = false;
     gameOverTimer = 0;
     timerSeconds = 60;
     document.getElementById('timerText').textContent = timerSeconds;
@@ -472,13 +462,11 @@ function updatePartTimers(playerObj) {
 
 function startRoundTimer() {
     timerInterval = setInterval(() => {
-        // นับเวลาถอยหลังเฉพาะเมื่ออยู่ในหน้าต่อสู้ ('playing') เท่านั้น
         if (gameScreen === 'playing' && !gameOver && timerSeconds > 0) {
             timerSeconds--;
             document.getElementById('timerText').textContent = timerSeconds;
             if (timerSeconds === 0) {
-                if (p1.hp >= p2.hp) triggerGameOver(p1, p2, 'P1 WIN');
-                else triggerGameOver(p2, p1, 'P2 WIN');
+                triggerDrawGameOver();
             }
         }
     }, 1000);
