@@ -50,8 +50,6 @@ let keys = {};
 // Keyboard-first development mode: start at the menu so the game can be
 // tested without connecting the Bluetooth IMU controllers.
 let gameScreen = 'menu';
-let leftStickConnected = false;
-let rightStickConnected = false;
 
 let gameOver = false;
 let isDrawRound = false;
@@ -214,21 +212,11 @@ function drawFallbackStickSetupShadow() {
 }
 
 function hideAllScreens() {
-    document.getElementById('stickSetupScreen').classList.add('hidden');
     document.getElementById('startScreen').classList.add('hidden');
     document.getElementById('charSelectScreen').classList.add('hidden');
     document.getElementById('tutorialScreen').classList.add('hidden');
-    const calibOverlay = document.getElementById('calibOverlay');
-    if (calibOverlay) calibOverlay.classList.add('hidden');
     document.getElementById('topHud').classList.add('opacity-0');
     document.getElementById('bottomFloorBar').classList.add('opacity-0');
-}
-
-function showStickSetupScreen() {
-    gameScreen = 'stick_setup';
-    hideAllScreens();
-    document.getElementById('stickSetupScreen').classList.remove('hidden');
-    drawFallbackStickSetupShadow();
 }
 
 function showMenuScreen() {
@@ -280,14 +268,6 @@ function updateRoundDotsUI() {
     });
 }
 
-
-async function selectCharacterAndCalibrateP1() {
-    if (gameScreen === 'calibrating') return;
-    if (typeof startP1AutoCalibration === 'function') {
-        await startP1AutoCalibration();
-    }
-    startNewMatch();
-}
 
 function startNewMatch() {
     currentRound = 1;

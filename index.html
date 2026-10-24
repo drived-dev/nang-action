@@ -12,135 +12,6 @@
 <body class="relative h-screen w-screen overflow-hidden bg-white text-slate-900 flex flex-col justify-between">
 
 
-    <div id="calibOverlay"
-        class="hidden fixed inset-0 z-[100] bg-slate-900/95 flex flex-col items-center justify-center text-center p-6 backdrop-blur-sm select-none">
-        <div
-            class="bg-[#f5c400] text-black silkscreen-font font-bold text-xs sm:text-sm px-4 py-1.5 rounded-full mb-4 tracking-widest">
-            PLAYER 1 IMU CALIBRATION
-        </div>
-        <h2 id="calibTitle" class="text-4xl sm:text-5xl font-bold mb-4 text-[#f5c400]">เตรียมตัว...</h2>
-        <div id="calibCount" class="text-8xl sm:text-9xl font-black text-white silkscreen-font mb-8 drop-shadow-lg">3
-        </div>
-        <p id="calibDesc" class="text-xl sm:text-2xl text-slate-300 max-w-2xl">รอคำสั่ง...</p>
-    </div>
-
-
-    <div id="stickSetupScreen"
-        class="hidden fixed inset-0 z-50 menu-grid-bg flex flex-col items-center justify-between py-10 px-6 select-none overflow-hidden">
-
-
-        <div class="fixed right-3 top-1/2 -translate-y-1/2 flex flex-col items-end gap-2 pointer-events-none z-20">
-            <div class="w-11 h-1.5 bg-[#f5c400] rounded-full"></div>
-            <div class="w-8 h-1.5 bg-black rounded-full"></div>
-            <div class="w-5 h-1.5 bg-black rounded-full"></div>
-            <div class="w-3.5 h-1.5 bg-black rounded-full"></div>
-            <div class="w-3.5 h-1.5 bg-black rounded-full"></div>
-        </div>
-
-
-        <div class="absolute inset-x-0 bottom-0 flex justify-center items-end pointer-events-none z-0">
-            <img id="bgShadowPuppetsPng" src="src/assets/images/shadow_puppets_bg.png" alt="Shadow Puppets Background"
-                class="w-[62%] max-w-[680px] h-auto object-contain opacity-95"
-                onerror="this.style.display='none'; document.getElementById('fallbackShadowCanvas').classList.remove('hidden');" />
-            <canvas id="fallbackShadowCanvas" width="760" height="460"
-                class="hidden w-[62%] max-w-[680px] h-auto pointer-events-none opacity-25"></canvas>
-        </div>
-
-
-        <div class="relative z-10 flex flex-col items-center text-center mt-2 sm:mt-4">
-            <h1 class="silkscreen-font font-bold text-2xl sm:text-3xl md:text-4xl text-black tracking-[0.15em]">
-                STICK SETUP
-            </h1>
-
-            <div class="bg-white/90 px-6 py-3 mt-5 sm:mt-7">
-                <p
-                    class="silkscreen-font font-bold text-sm sm:text-base md:text-xl text-black tracking-[0.12em] leading-relaxed">
-                    MAKE SURE THE YELLOW<br />DOT IS FACING YOU.
-                </p>
-            </div>
-        </div>
-
-
-        <div class="relative z-10 w-full max-w-6xl flex items-center justify-between px-4 sm:px-12 my-auto">
-
-
-            <div class="w-[42%] flex flex-col items-center justify-center min-h-[280px] sm:min-h-[360px]">
-                <button id="btnConnectLeft" type="button"
-                    class="stepped-btn bg-[#f5c400] hover:bg-[#eab308] active:scale-95 text-black silkscreen-font font-bold text-sm sm:text-base md:text-xl tracking-[0.18em] w-56 sm:w-64 md:w-72 py-4 cursor-pointer transition-transform">
-                    CONNECT
-                </button>
-
-                <div id="leftStickGraphic"
-                    class="hidden w-48 sm:w-60 md:w-72 pointer-events-none transition-all duration-200">
-                    <svg viewBox="0 0 260 360" class="w-full h-auto overflow-visible">
-                        <path d="M 42 260 C 42 350, 218 350, 218 260" fill="none" stroke="#000000" stroke-width="11"
-                            stroke-linecap="round" />
-                        <path d="M 42 260 C 42 350, 218 350, 218 260" fill="none" stroke="#ffffff" stroke-width="5"
-                            stroke-linecap="round" />
-                        <g transform="translate(10, 10)">
-                            <path
-                                d="M 16 0 L 48 0 L 48 85 L 64 135 L 64 242 C 64 247 60 250 55 250 L 9 250 C 4 250 0 247 0 242 L 0 135 L 16 85 Z"
-                                fill="#ffffff" stroke="#000000" stroke-width="5" stroke-linejoin="round" />
-                            <line x1="0" y1="234" x2="64" y2="234" stroke="#000000" stroke-width="3" />
-                            <circle cx="32" cy="212" r="7.5" fill="#f5c400" stroke="#000000" stroke-width="3" />
-                        </g>
-                        <g transform="translate(186, 10)">
-                            <path
-                                d="M 16 0 L 48 0 L 48 85 L 64 135 L 64 242 C 64 247 60 250 55 250 L 9 250 C 4 250 0 247 0 242 L 0 135 L 16 85 Z"
-                                fill="#ffffff" stroke="#000000" stroke-width="5" stroke-linejoin="round" />
-                            <line x1="0" y1="234" x2="64" y2="234" stroke="#000000" stroke-width="3" />
-                            <circle cx="32" cy="212" r="7.5" fill="#f5c400" stroke="#000000" stroke-width="3" />
-                        </g>
-                    </svg>
-                </div>
-            </div>
-
-
-            <div class="w-[42%] flex flex-col items-center justify-center min-h-[280px] sm:min-h-[360px]">
-                <button id="btnConnectRight" type="button"
-                    class="stepped-btn bg-[#f5c400] hover:bg-[#eab308] active:scale-95 text-black silkscreen-font font-bold text-sm sm:text-base md:text-xl tracking-[0.18em] w-56 sm:w-64 md:w-72 py-4 cursor-pointer transition-transform">
-                    CONNECT
-                </button>
-
-                <div id="rightStickGraphic"
-                    class="hidden w-48 sm:w-60 md:w-72 pointer-events-none transition-all duration-200">
-                    <svg viewBox="0 0 260 360" class="w-full h-auto overflow-visible">
-                        <path d="M 42 260 C 42 350, 218 350, 218 260" fill="none" stroke="#000000" stroke-width="11"
-                            stroke-linecap="round" />
-                        <path d="M 42 260 C 42 350, 218 350, 218 260" fill="none" stroke="#ffffff" stroke-width="5"
-                            stroke-linecap="round" />
-                        <g transform="translate(10, 10)">
-                            <path
-                                d="M 16 0 L 48 0 L 48 85 L 64 135 L 64 242 C 64 247 60 250 55 250 L 9 250 C 4 250 0 247 0 242 L 0 135 L 16 85 Z"
-                                fill="#ffffff" stroke="#000000" stroke-width="5" stroke-linejoin="round" />
-                            <line x1="0" y1="234" x2="64" y2="234" stroke="#000000" stroke-width="3" />
-                            <circle cx="32" cy="212" r="7.5" fill="#f5c400" stroke="#000000" stroke-width="3" />
-                        </g>
-                        <g transform="translate(186, 10)">
-                            <path
-                                d="M 16 0 L 48 0 L 48 85 L 64 135 L 64 242 C 64 247 60 250 55 250 L 9 250 C 4 250 0 247 0 242 L 0 135 L 16 85 Z"
-                                fill="#ffffff" stroke="#000000" stroke-width="5" stroke-linejoin="round" />
-                            <line x1="0" y1="234" x2="64" y2="234" stroke="#000000" stroke-width="3" />
-                            <circle cx="32" cy="212" r="7.5" fill="#f5c400" stroke="#000000" stroke-width="3" />
-                        </g>
-                    </svg>
-                </div>
-            </div>
-
-        </div>
-
-
-        <div class="relative z-30 h-16 flex items-center justify-center">
-            <button id="btnStickNext" type="button"
-                class="hidden w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-[#f5c400] hover:bg-[#eab308] active:scale-95 items-center justify-center cursor-pointer shadow-md transition-transform">
-                <svg viewBox="0 0 24 24" class="w-7 h-7 fill-black pointer-events-none">
-                    <path d="M 4 11 H 14 V 7 H 16 V 9 H 18 V 11 H 20 V 13 H 18 V 15 H 16 V 17 H 14 V 13 H 4 Z" />
-                </svg>
-            </button>
-        </div>
-    </div>
-
-
     <div id="startScreen"
         class="hidden fixed inset-0 z-40 menu-grid-bg flex flex-col items-center justify-center select-none">
 
@@ -173,8 +44,7 @@
         </div>
 
         <div id="charPreviewContainer"
-            class="w-full max-w-[1150px] grid grid-cols-2 gap-5 sm:gap-7 my-auto cursor-pointer"
-            title="คลิกหรือกด Space/Enter เพื่อทำการ Calibrate P1 และเริ่มเกม">
+            class="w-full max-w-[1150px] grid grid-cols-2 gap-5 sm:gap-7 my-auto cursor-pointer">
 
 
             <div
