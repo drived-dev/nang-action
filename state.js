@@ -47,7 +47,7 @@ let p1 = createPlayerState(0.28, 1);
 let p2 = createPlayerState(0.72, -1);
 
 let keys = {};
-let gameScreen = 'stick_setup'; // 'stick_setup' | 'menu' | 'char_select' | 'tutorial' | 'playing'
+let gameScreen = 'stick_setup'; // 'stick_setup' | 'menu' | 'char_select' | 'calibrating' | 'tutorial' | 'playing'
 let leftStickConnected = false;
 let rightStickConnected = false;
 
@@ -91,7 +91,6 @@ componentNames.forEach(name => {
     images[name] = img;
 });
 
-// ฟังก์ชันช่วยวาดหุ่นลงบน Canvas พรีวิว (ทั้งกรอบใหญ่ตรงกลางและกรอบเล็กด้านล่าง)
 function drawStaticPuppetOnCanvas(targetCanvas, centerX, centerY, scale, facingDir, showSticks = true) {
     if (!targetCanvas || typeof updatePlayerTransforms !== 'function') return;
     const tCtx = targetCanvas.getContext('2d');
@@ -111,7 +110,6 @@ function drawStaticPuppetOnCanvas(targetCanvas, centerX, centerY, scale, facingD
     tCtx.translate(dummy.x, dummy.y);
     tCtx.scale(dummy.scale * dummy.visualFacingX, dummy.scale);
 
-    // วาดไม้เชิดในกรอบพรีวิวใหญ่ตามรูปตัวอย่าง
     if (showSticks && dummy.worldTransforms['lower_body'] && dummy.worldTransforms['right_hand']) {
         tCtx.save();
         tCtx.strokeStyle = '#000000';
@@ -145,7 +143,6 @@ function drawStaticPuppetOnCanvas(targetCanvas, centerX, centerY, scale, facingD
         if (img && img.complete && img.naturalWidth > 0) {
             tCtx.drawImage(img, -img.width / 2, -img.height / 2);
         } else if (typeof drawProceduralFallback === 'function') {
-            // วาดรูปทรงสำรองกรณีไม่มีไฟล์รูป
             tCtx.fillStyle = '#000000';
             tCtx.beginPath();
             tCtx.arc(0, 0, 20, 0, Math.PI * 2);
@@ -157,17 +154,13 @@ function drawStaticPuppetOnCanvas(targetCanvas, centerX, centerY, scale, facingD
     tCtx.restore();
 }
 
-// วาดรูปพรีวิวในหน้า SELECT YOUR NANG (กรอบใหญ่ซ้าย P1, กรอบใหญ่ขวา P2, และกรอบเล็กด้านล่าง)
 function renderCharacterSelectPreviews() {
     const p1Canvas = document.getElementById('p1PreviewCanvas');
     const p2Canvas = document.getElementById('p2PreviewCanvas');
     const thumb1 = document.getElementById('thumbCanvas1');
 
-    // กรอบใหญ่ซ้าย (P1 หันขวา) และกรอบใหญ่ขวา (P2 หันซ้ายเข้าหากัน)
     drawStaticPuppetOnCanvas(p1Canvas, 245, 250, 0.72, 1, true);
     drawStaticPuppetOnCanvas(p2Canvas, 275, 250, 0.72, -1, true);
-
-    // กรอบเล็กด้านล่าง (ซูมช่วงหัวและไหล่เหมือนในรูปต้นฉบับ)
     drawStaticPuppetOnCanvas(thumb1, 100, 195, 0.78, 1, false);
 }
 
@@ -223,6 +216,8 @@ function hideAllScreens() {
     document.getElementById('startScreen').classList.add('hidden');
     document.getElementById('charSelectScreen').classList.add('hidden');
     document.getElementById('tutorialScreen').classList.add('hidden');
+    const calibOverlay = document.getElementById('calibOverlay');
+    if (calibOverlay) calibOverlay.classList.add('hidden');
     document.getElementById('topHud').classList.add('opacity-0');
     document.getElementById('bottomFloorBar').classList.add('opacity-0');
 }
@@ -265,7 +260,6 @@ function updateCharSelectUI() {
     document.getElementById('p2HudName').textContent = p2Name;
 }
 
-// อัปเดตจุด 3 จุดด้านบนตามรอบที่กำลังเล่น (รอบ 1, 2, 3)
 function updateRoundDotsUI() {
     const dots = [
         document.getElementById('roundDot1'),
@@ -284,6 +278,15 @@ function updateRoundDotsUI() {
     });
 }
 
+// ฟังก์ชันเลือกตัวละคร -> เข้าสู่การ Calibrate IMU ของ P1 -> เริ่มเกม
+async function selectCharacterAndCalibrateP1() {
+    if (gameScreen === 'calibrating') return;
+    if (typeof startP1AutoCalibration === 'function') {
+        await startP1AutoCalibration();
+    }
+    startNewMatch();
+}
+
 function startNewMatch() {
     currentRound = 1;
     gameScreen = 'playing';
@@ -292,7 +295,6 @@ function startNewMatch() {
     restartGame();
 }
 
-// เมื่อจบแต่ละตา: ถ้ายังไม่ครบ 3 รอบให้เริ่มรอบถัดไป ถ้าครบ 3 รอบแล้วให้กลับไปหน้าเริ่มต้น (ที่มี GAME START, TUTORIAL)
 function advanceRoundOrReturnToMenu() {
     if (currentRound < TOTAL_ROUNDS) {
         currentRound++;
