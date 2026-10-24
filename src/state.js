@@ -212,11 +212,11 @@ function drawFallbackStickSetupShadow() {
 }
 
 function hideAllScreens() {
-    document.getElementById('startScreen').classList.add('hidden');
-    document.getElementById('charSelectScreen').classList.add('hidden');
-    document.getElementById('tutorialScreen').classList.add('hidden');
-    document.getElementById('topHud').classList.add('opacity-0');
-    document.getElementById('bottomFloorBar').classList.add('opacity-0');
+    ['startScreen', 'charSelectScreen', 'tutorialScreen'].forEach(id => {
+        document.getElementById(id)?.classList.add('hidden');
+    });
+    document.getElementById('topHud')?.classList.add('opacity-0');
+    document.getElementById('bottomFloorBar')?.classList.add('opacity-0');
 }
 
 function showMenuScreen() {
