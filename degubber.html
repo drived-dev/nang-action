@@ -23,7 +23,7 @@
 
 <body class="text-slate-800 p-4 sm:p-8 min-h-screen flex flex-col relative">
 
-    <!-- หน้าจอนับถอยหลัง Auto Train -->
+
     <div id="calibOverlay"
         class="hidden fixed inset-0 z-[100] bg-slate-900/95 flex flex-col items-center justify-center text-center p-6 backdrop-blur-sm transition-opacity">
         <h2 id="calibTitle" class="text-4xl sm:text-5xl font-bold mb-4 text-[#f5c400]">เตรียมตัว...</h2>
@@ -31,7 +31,7 @@
         <p id="calibDesc" class="text-xl sm:text-2xl text-slate-300 max-w-2xl">รอคำสั่ง...</p>
     </div>
 
-    <!-- Header -->
+
     <div
         class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
@@ -52,7 +52,7 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1">
 
-        <!-- แผงสอนท่าทาง -->
+
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col gap-3">
 
             <button onclick="startAutoTraining()"
@@ -89,7 +89,7 @@
                 <span id="info-BACKWARD" class="text-xs mono text-purple-700">ยังไม่บันทึก</span>
             </button>
 
-            <!-- พารามิเตอร์ปรับความไว -->
+
             <div class="mt-2 border-t pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label class="flex justify-between text-xs font-bold mb-1">
@@ -108,14 +108,14 @@
             </div>
         </div>
 
-        <!-- หน้าจอแสดงผล & หลอดเปอร์เซ็นต์ -->
+
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col items-center relative">
             <h3 class="text-sm font-bold text-slate-400 mb-1 uppercase text-center">Current Detected Action</h3>
             <div id="gameActionText" class="text-4xl sm:text-5xl font-black text-slate-800 mono text-center w-full py-2">
                 IDLE</div>
 
             <div class="w-full grid grid-cols-2 gap-4 mt-3 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs mono">
-                <!-- ไม้ซ้าย -->
+
                 <div>
                     <div class="flex justify-between items-center mb-2 border-b pb-1">
                         <span class="font-sans font-bold text-slate-500">LEFT STICK</span>
@@ -123,7 +123,7 @@
                     </div>
                     <div id="lBars" class="flex flex-col gap-1.5"></div>
                 </div>
-                <!-- ไม้ขวา -->
+
                 <div class="border-l pl-4 border-slate-200">
                     <div class="flex justify-between items-center mb-2 border-b pb-1">
                         <span class="font-sans font-bold text-slate-500">RIGHT STICK</span>
@@ -133,7 +133,7 @@
                 </div>
             </div>
 
-            <!-- จัดการโค้ด Profile -->
+
             <div class="mt-auto w-full pt-5">
                 <h3 class="text-sm font-bold text-slate-500 mb-2 border-b pb-2">📂 จัดการโค้ด Profile</h3>
                 <div class="flex gap-2 w-full">
@@ -160,7 +160,7 @@
         </div>
     </div>
 
-    <!-- กราฟ -->
+
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-6">
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col items-center">
             <div class="w-full flex justify-between items-center mb-3">
@@ -208,7 +208,7 @@
     </div>
 
     <script>
-        // ================= 1. CHART.JS SETUP =================
+
         const MAX_POINTS = 50;
         const chartConfig = {
             type: 'line',
@@ -246,7 +246,7 @@
             chartRight.update();
         }
 
-        // ================= 2. SENSOR & ZERO TARE =================
+
         let rawSensor = { left: { r: 0, p: 0, y: 0 }, right: { r: 0, p: 0, y: 0 } };
         let idleZero = { left: { r: 0, p: 0, y: 0 }, right: { r: 0, p: 0, y: 0 } };
         let isFirstFrame = true;
@@ -271,11 +271,11 @@
             };
         }
 
-        // ================= 3. PROFILE WITH LEARNED CROSS-TALK COMPENSATION =================
+
         let TRIGGER_THRESHOLD = 0.40;
         let YAW_WEIGHT = 0.10;
 
-        // แต่ละท่าเก็บทั้งค่ากลางและตัวอย่างทุกเฟรมจากช่วง calibrate
+
         let PROFILES = {
             left: {
                 'IDLE':     { r: 0, p: 0, y: 0, samples: [{ r: 0, p: 0, y: 0 }] },
@@ -316,7 +316,7 @@
                     y: parseFloat(wrapDiff(frame[side].y, idleZero[side].y).toFixed(1))
                 }));
 
-                // Support manual/keyboard use before any BLE sample history exists.
+
                 if (!poseSamples.length) poseSamples.push(getRelativeAngles(side));
 
                 const mean = poseSamples.reduce((sum, sample) => ({
@@ -345,7 +345,7 @@
             });
         }
 
-        // เทียบค่าปัจจุบันกับตัวอย่างจริงทั้งหมดของแต่ละท่า แล้วใช้เพื่อนบ้านที่ใกล้สุด
+
         function computeLearnedScores(side) {
             let cur = getRelativeAngles(side);
             let scores = { LEFT: 0, RIGHT: 0, FORWARD: 0, BACKWARD: 0 };
@@ -356,7 +356,7 @@
             for (const state of Object.keys(scores)) {
                 const profile = prof[state];
                 if (!profile) continue;
-                // Older profiles contain only the mean vector; newer ones retain every captured frame.
+
                 const samples = Array.isArray(profile.samples) && profile.samples.length
                     ? profile.samples
                     : [profile];
@@ -373,7 +373,7 @@
             return scores;
         }
 
-        // ตัดสินใจเลือกท่าจากคะแนนที่ผ่านการหักลบค่าปนแล้ว
+
         function resolvePose(scores) {
             let L = scores.LEFT || 0;
             let R = scores.RIGHT || 0;
@@ -383,17 +383,17 @@
             let maxVal = Math.max(L, R, F, B);
             if (maxVal < TRIGGER_THRESHOLD) return 'IDLE';
 
-            // จัดลำดับความสำคัญตามพฤติกรรมจริงของคุณ:
-            // - ถ้าโยกขวาเดี่ยวๆ -> RIGHT สูงสุดโดยไม่มี BACKWARD ปน
-            // - ถ้าดึงหลัง -> BACKWARD และ RIGHT จะขึ้นพร้อมกัน แต่เพราะ BACKWARD มีโปรไฟล์ดึงหลังรองรับ ให้เลือก BACKWARD
-            // - ถ้าดันหน้า -> FORWARD จะขึ้นเดี่ยวๆ
-            // - ถ้าโยกซ้าย -> LEFT จะขึ้น
+
+
+
+
+
             if (B >= TRIGGER_THRESHOLD && R >= TRIGGER_THRESHOLD && B >= R * 0.70) {
                 return 'BACKWARD';
             }
             if (F >= TRIGGER_THRESHOLD && R >= TRIGGER_THRESHOLD && F >= R * 0.70 && F >= F*0.5) {
-                // ถ้าดันหน้าแล้วมี Right ปนมา แต่คะแนน Forward ชนะหรือสูสี ให้ยกผลประโยชน์ให้ Forward
-                // แต่ถ้า Right โดดเด่นกว่าอย่างเห็นได้ชัด ให้เป็น Right
+
+
             }
 
             if (maxVal === F) return 'FORWARD';
@@ -434,7 +434,7 @@
             container.innerHTML = html;
         }
 
-        // ================= 4. UI UPDATE =================
+
         document.getElementById('paramThresh').addEventListener('input', (e) => {
             TRIGGER_THRESHOLD = parseFloat(e.target.value) / 100;
             document.getElementById('valThresh').textContent = e.target.value + '%';
@@ -476,7 +476,7 @@
             renderScoreBars('lBars', lEval.scores, lState);
             renderScoreBars('rBars', rEval.scores, rState);
 
-            // แปลผลคำสั่งเกมแบบเฉลี่ย 2 ด้าม
+
             let action = "IDLE";
             let color = "text-emerald-500";
 
@@ -515,7 +515,7 @@
             previousAction = action;
         }
 
-        // ================= 5. AUTO TRAINING =================
+
         const SEQUENCE = [
             { id: 'IDLE', title: '1. ท่าพัก (IDLE = 0°)', desc: 'ถือไม้ในท่าปกตินิ่งๆ ระบบจะเซ็ตจุดนี้ให้ทุกแกนเป็น 0 องศา' },
             { id: 'LEFT', title: '2. โยกซ้าย (LEFT)', desc: 'โยกไม้ทั้งสองไปทางซ้ายค้างไว้' },
@@ -557,7 +557,7 @@
             overlay.classList.add('hidden');
         }
 
-        // ================= 6. IMPORT / EXPORT =================
+
         function prepareImport() {
             const section = document.getElementById('importSection');
             const btnApply = document.getElementById('btnApply');
@@ -597,7 +597,7 @@
             alert('✅ คัดลอก Profile ลง Clipboard แล้ว!');
         }
 
-        // ================= 7. BLE CONNECTION =================
+
         const BLE_SERVICE_UUID = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
         document.getElementById('btnConnect').addEventListener('click', async () => {
             try {
@@ -639,7 +639,7 @@
             } catch (err) { console.error(err); }
         });
 
-        // ================= 8. KEYBOARD SIMULATION =================
+
         function wrap180(angle) {
             let a = angle % 360;
             if (a > 180) a -= 360;

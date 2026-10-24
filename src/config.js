@@ -1,25 +1,22 @@
-// =========================================================================
-// ⚙️ ตัวแปรสำหรับปรับองศาการฟัน ความเร็ว ระบบชาร์จ การหน่วงออร่า และการควบคุมมือ
-// =========================================================================
-const MAX_SLASH_ANGLE = 45;          // 📐 องศามุมการฟันไปข้างหน้าใน 1 ครั้ง
-const MAX_CHARGE_WINDUP = 28;        // 📐 องศาที่ดาบง้างถอยหลังเพิ่มขึ้นเมื่อชาร์จเต็ม
-const SLASH_SWING_SPEED = 4.2;       // ความเร็วตอนฟันดาบออก
-const SLASH_RETRACT_SPEED = 3.5;     // ความเร็วตอนชักดาบกลับ
-const MOVE_SPEED = 5.5;              // ความเร็วในการเดินของตัวละคร
-const BASE_DAMAGE = 20;              // ค่าความเสียหายพื้นฐาน (100%)
-const PART_FLASH_DURATION = 45;      // ระยะเวลา (เฟรม) ที่ชิ้นส่วนเปลี่ยนเป็นสีแดง
-const CLASH_KNOCKBACK = 28;          // ระยะกระเด็นถอยหลังเมื่อดาบฟันปะทะกันเอง
-const VICTORY_BG_COLOR = '#f5c400';  // สีพื้นหลังเหลืองทองหน้าประกาศผลผู้ชนะ
+const MAX_SLASH_ANGLE = 45;
+const MAX_CHARGE_WINDUP = 28;
+const SLASH_SWING_SPEED = 4.2;
+const SLASH_RETRACT_SPEED = 3.5;
+const MOVE_SPEED = 5.5;
+const BASE_DAMAGE = 20;
+const PART_FLASH_DURATION = 45;
+const CLASH_KNOCKBACK = 28;
+const VICTORY_BG_COLOR = '#f5c400';
 
-// --- ตัวแปรระบบ Charge Attack, ดีเลย์ออร่าสีแดง & การควบคุมมือ ---
-const MAX_CHARGE_MULTIPLIER = 1.5;   // ความแรงสูงสุดเมื่อชาร์จเต็ม (1.5 เท่า)
-const MAX_CHARGE_FRAMES = 55;        // จำนวนเฟรมที่ใช้ชาร์จจนเต็ม 100% (~0.9 วินาที)
-const CHARGE_AURA_DELAY_FRAMES = 14; // ⏳ ดีเลย์ (จำนวนเฟรม) ก่อนที่ออร่าสีแดงจะเริ่มปรากฏเมื่อกดชาร์จค้าง
-const HAND_CONTROL_SPEED = 2.2;      // ความเร็วในการบังคับยก/ลดมือที่ถือดาบ (Q/E และ U/O)
-const HAND_MIN_ANGLE = -55;          // มุมยกมือสูงสุด (เล็งส่วนหัว)
-const HAND_MAX_ANGLE = 50;           // มุมลดมือต่ำสุด (เล็งส่วนขา)
 
-// --- 1. CONFIG & RIGGING DATA ---
+const MAX_CHARGE_MULTIPLIER = 1.5;
+const MAX_CHARGE_FRAMES = 55;
+const CHARGE_AURA_DELAY_FRAMES = 14;
+const HAND_CONTROL_SPEED = 2.2;
+const HAND_MIN_ANGLE = -55;
+const HAND_MAX_ANGLE = 50;
+
+
 const DEFAULT_JOINTS = {
     upper_body:      { x: 0,    y: 0,    pivotX: 0,   pivotY: 0,    rotation: 0,  zIndex: 70 },
     head:            { x: 0,    y: -101, pivotX: 38,  pivotY: -93,  rotation: 0,  zIndex: 80 },

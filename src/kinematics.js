@@ -1,6 +1,6 @@
-// =========================================================================
-// 📐 4. KINEMATICS, MATRIX CALCULATIONS & BODY-TO-BODY COLLISION
-// =========================================================================
+
+
+
 
 function multiplyMatrix(m1, m2) {
     return [
@@ -319,7 +319,7 @@ function updatePlayerTransforms(playerObj, jointsObj) {
     }
 }
 
-// ป้องกันไม่ให้ตัวละครเดินทะลุผ่านกัน ไม่ว่าชิ้นส่วนใดของร่างกายจะชนกัน
+
 function resolvePlayerBodyCollision(p1Obj, p2Obj) {
     updatePlayerTransforms(p1Obj, p1Joints);
     updatePlayerTransforms(p2Obj, p2Joints);
@@ -333,7 +333,7 @@ function resolvePlayerBodyCollision(p1Obj, p2Obj) {
             for (const caps2 of Object.values(p2Obj.bodyCapsulesWorld)) {
                 for (const c2 of caps2) {
                     const res = segmentToSegmentCollision(c1.a, c1.b, c2.a, c2.b);
-                    // ใช้รัศมีสัมผัส 82% ของ Hitbox เพื่อให้รูปทรงสีดำชนติดกันพอดีโดยไม่ลอยห่างกัน
+
                     const minAllowedDist = (c1.radius + c2.radius) * 0.82;
 
                     if (res.distance < minAllowedDist) {
@@ -362,7 +362,7 @@ function resolvePlayerBodyCollision(p1Obj, p2Obj) {
         const p2Speed = Math.abs(p2Obj.vx) + Math.abs(p2Obj.vy);
         const totalSpeed = p1Speed + p2Speed;
 
-        // ฝั่งที่เดินพุ่งเข้ามาชนจะถูกดันกลับออกไปไม่ให้เดินทะลุผ่านอีกฝ่ายได้
+
         let p1Share = 0.5;
         let p2Share = 0.5;
         if (totalSpeed > 0) {

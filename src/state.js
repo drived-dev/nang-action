@@ -1,6 +1,6 @@
-// =========================================================================
-// 📦 สถานะของเกม หน้าจอเมนู ตัวละคร จำนวนรอบ (3 รอบ) และตั้งค่า Canvas
-// =========================================================================
+
+
+
 const canvas = document.getElementById('stageCanvas');
 const ctx = canvas.getContext('2d');
 
@@ -47,7 +47,9 @@ let p1 = createPlayerState(0.28, 1);
 let p2 = createPlayerState(0.72, -1);
 
 let keys = {};
-let gameScreen = 'stick_setup'; // 'stick_setup' | 'menu' | 'char_select' | 'calibrating' | 'tutorial' | 'playing'
+// Keyboard-first development mode: start at the menu so the game can be
+// tested without connecting the Bluetooth IMU controllers.
+let gameScreen = 'menu';
 let leftStickConnected = false;
 let rightStickConnected = false;
 
@@ -59,11 +61,11 @@ let loserPlayer = null;
 let detachedParts = [];
 let gameOverTimer = 0;
 
-// ระบบนับจำนวนตา (เล่นทั้งหมด 3 รอบ)
+
 const TOTAL_ROUNDS = 3;
 let currentRound = 1;
 
-// ตอนนี้มีตัวละครเดียวคือ CHALAWAN
+
 const CHARACTER_ROSTER = ['CHALAWAN'];
 let p1CharIndex = 0;
 let p2CharIndex = 0;
@@ -73,14 +75,14 @@ let clashRings = [];
 let timerSeconds = 60;
 let timerInterval = null;
 
-// โหลดรูปภาพชิ้นส่วนทั้งหมด
+
 const componentNames = Object.keys(DEFAULT_JOINTS);
 const images = {};
 let loadedImagesCount = 0;
 
 componentNames.forEach(name => {
     const img = new Image();
-    img.src = `Body_Component/${name}.png`;
+    img.src = `src/assets/Body_Component/${name}.png`;
     img.onload = () => {
         loadedImagesCount++;
         if (loadedImagesCount === componentNames.length) {
@@ -278,7 +280,7 @@ function updateRoundDotsUI() {
     });
 }
 
-// ฟังก์ชันเลือกตัวละคร -> เข้าสู่การ Calibrate IMU ของ P1 -> เริ่มเกม
+
 async function selectCharacterAndCalibrateP1() {
     if (gameScreen === 'calibrating') return;
     if (typeof startP1AutoCalibration === 'function') {
@@ -307,7 +309,7 @@ function advanceRoundOrReturnToMenu() {
     }
 }
 
-// --- 2. CANVAS SETUP & DYNAMIC SCALING ---
+
 function resizeCanvas() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
@@ -324,3 +326,4 @@ function resizeCanvas() {
 
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
+showMenuScreen();

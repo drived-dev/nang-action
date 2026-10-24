@@ -1,6 +1,6 @@
-// =========================================================================
-// 🎨 5. RENDER PLAYER, SWORD SLATE BLOCK (#6D8196) & MAIN LOOP
-// =========================================================================
+
+
+
 
 function drawSwordRedAura(img, auraIntensity) {
     const pulse = 0.85 + Math.sin(performance.now() * 0.025) * 0.15;
@@ -103,8 +103,8 @@ function renderPlayer(playerObj, jointsObj) {
             hitOffscreenCtx.globalCompositeOperation = 'source-over';
             hitOffscreenCtx.drawImage(img, 0, 0);
 
-            // ถ้าเป็นดาบ (เกิดการ Block) ให้เปลี่ยนเป็นสี Slate #6D8196 (rgb 109, 129, 150)
-            // ถ้าเป็นชิ้นส่วนร่างกายโดนฟัน ให้เปลี่ยนเป็นสีแดง
+
+
             hitOffscreenCtx.globalCompositeOperation = 'lighten';
             if (name === 'sword') {
                 hitOffscreenCtx.fillStyle = `rgba(109, 129, 150, ${flashAlpha})`;
@@ -154,7 +154,7 @@ function drawPuppetSticks(playerObj, worldTransforms) {
 }
 
 function drawProceduralFallback(name, isPartHit = false) {
-    // ตอน Block ดาบจะเปลี่ยนเป็นสี #6D8196
+
     const hitColor = (name === 'sword') ? '#6D8196' : '#ef4444';
     const innerDetailColor = gameOver ? VICTORY_BG_COLOR : '#ffffff';
     ctx.fillStyle = isPartHit ? hitColor : '#000000';
@@ -272,7 +272,7 @@ function renderVictoryBanner() {
     ctx.restore();
 }
 
-// --- 9. MAIN LOOP ---
+
 function update() {
     if (gameScreen !== 'playing') return;
 
@@ -314,7 +314,7 @@ function update() {
 
     handlePlayerControls();
 
-    // บังคับไม่ให้ตัวละครเดินทะลุผ่านกันได้
+
     resolvePlayerBodyCollision(p1, p2);
 
     processSlashAndCollisions();
@@ -385,7 +385,7 @@ function loop() {
     requestAnimationFrame(loop);
 }
 
-// เริ่มต้นระบบทั้งหมด
+
 setupInputListeners();
 startRoundTimer();
 loop();

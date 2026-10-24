@@ -1,7 +1,3 @@
-// =========================================================================
-// ⚔️ ระบบการต่อสู้ Block ดาบอัตโนมัติ (เปลี่ยนสีดาบเป็น #6D8196 โดยไม่มี Particle)
-// =========================================================================
-
 function getSwordAuraIntensity(playerObj) {
     if (playerObj.isCharging) {
         if (playerObj.chargeFrames <= CHARGE_AURA_DELAY_FRAMES) {
@@ -39,7 +35,7 @@ function releaseChargeAndSlash(playerObj) {
     }
 }
 
-// --- 6. DISMEMBERMENT PHYSICS ---
+
 function appendDetachedPartsForPlayer(targetObj, jointsObj, xMinRatio = 0.06, xSpanRatio = 0.88) {
     updatePlayerTransforms(targetObj, jointsObj);
 
@@ -150,7 +146,7 @@ function updateDetachedParts() {
     });
 }
 
-// --- 7. SWORD CHARGE AURA PARTICLES ---
+
 function spawnSwordAuraParticles(playerObj) {
     const intensity = getSwordAuraIntensity(playerObj);
     if (intensity <= 0.01 || playerObj.swordSegmentsWorld.length === 0) return;
@@ -184,8 +180,8 @@ function updateParticles() {
     }
 }
 
-// --- 8. PASSIVE SWORD BLOCK & HITBOX DETECTION ---
-// ตอน Block เอา Particle กลมๆ ที่กระจายออกมาออกทั้งหมด ทำแค่เปลี่ยนสีดาบเป็น #6D8196
+
+
 function checkSwordClash(p1Obj, p2Obj) {
     const p1Swinging = p1Obj.isSlashing && p1Obj.slashState === 'swing';
     const p2Swinging = p2Obj.isSlashing && p2Obj.slashState === 'swing';
@@ -203,7 +199,7 @@ function checkSwordClash(p1Obj, p2Obj) {
                     p1Obj.clashCooldown = 14;
                     p2Obj.clashCooldown = 14;
 
-                    // สั่งให้ดาบเปลี่ยนสีเป็นสี Slate #6D8196 (จัดการใน renderer.js)
+
                     p1Obj.partHitTimers['sword'] = PART_FLASH_DURATION;
                     p2Obj.partHitTimers['sword'] = PART_FLASH_DURATION;
 

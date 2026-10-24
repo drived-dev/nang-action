@@ -16,7 +16,7 @@ canvas {
     font-family: 'VT323', monospace;
 }
 
-/* ฟอนต์ Silkscreen สำหรับหัวข้อและปุ่มกดทั้งหมดตามที่ออกแบบไว้ */
+
 .silkscreen-font {
     font-family: 'Silkscreen', monospace;
 }
@@ -25,14 +25,14 @@ canvas {
     font-family: 'Silkscreen', 'Press Start 2P', monospace;
 }
 
-/* พื้นหลังตารางเส้นประพร้อมจุดกลมตรงจุดตัด */
+
 .menu-grid-bg {
     background-color: #ffffff;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'%3E%3Cpath d='M 64 0 L 0 0 0 64' fill='none' stroke='%23e2e8f0' stroke-width='1.2' stroke-dasharray='3,3'/%3E%3Ccircle cx='0' cy='0' r='2' fill='%2394a3b8'/%3E%3Ccircle cx='64' cy='0' r='2' fill='%2394a3b8'/%3E%3Ccircle cx='0' cy='64' r='2' fill='%2394a3b8'/%3E%3Ccircle cx='64' cy='64' r='2' fill='%2394a3b8'/%3E%3C/svg%3E");
     background-position: center center;
 }
 
-/* ปุ่มทรงสี่เหลี่ยมบากมุมเยื้อง (Stepped Pixel Corner) */
+
 .stepped-btn {
     clip-path: polygon(14px 0%,
             100% 0%,

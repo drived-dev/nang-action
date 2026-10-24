@@ -1,16 +1,6 @@
-// =========================================================================
-// 🎮 3. BLE SEARCH & CONNECT (P1), 5-POSE AUTO CALIBRATION & INPUT CONTROLS
-// =========================================================================
-
-// UUID จากบอร์ด ESP32_IM
-const BLE_SERVICE_UUID = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
-const BLE_CHARACTERISTIC_UUID = 'beb5483e-36e1-4688-b7f5-ea07361b26a8';
-
 let bleDevice = null;
 let bleCharacteristic = null;
 
-// ================= ALGORITHM & PROFILE STATE (P1) =================
-// สามารถนำโค้ดที่กด Export จากหน้า Pose Trainer มาวางทับ 2 ตัวแปรด้านล่างนี้ได้ทันที
 let IMU_PROFILES = {
     left: {
         'IDLE': { r: 0, p: 0, y: 0 },
@@ -27,7 +17,6 @@ let IMU_PROFILES = {
         'BACKWARD': { r: 0, p: 45, y: 0 }
     }
 };
-let IDLE_BIAS = 30;
 
 let p1RawData = {
     left: { roll: 0, pitch: 0, yaw: 0 },
@@ -36,12 +25,19 @@ let p1RawData = {
 
 let p1PreviousAction = "IDLE";
 let p1ImuActive = false;
-// Ignore brief pose transitions so an initial tilt is not treated as a command.
+const P1_POSE_CAPTURE_MS = 2000;
+const P1_SENSOR_HISTORY_MS = 10000;
+const P1_PROFILE_NEIGHBORS = 3;
+const P1_PROFILE_DISTANCE_SCALE = 20;
+const P1_TRIGGER_THRESHOLD = 0.40;
+const P1_YAW_WEIGHT = 0.10;
+let p1SensorHistory = [];
+
 const P1_ACTION_CONFIRM_MS = 180;
 let p1PendingAction = "IDLE";
 let p1PendingActionSince = 0;
 
-// ================= AUTO TRAINING (5 ท่าสำหรับ P1) =================
+
 const SEQUENCE = [
     { id: 'IDLE', title: '1. IDLE (ท่าพัก)', desc: 'ถือไม้ทั้งสองตั้งตรง นิ่งๆ' },
     { id: 'LEFT', title: '2. โยกซ้าย', desc: 'โยกไม้ทั้งสองไปทางซ้ายสุด' },
@@ -51,10 +47,52 @@ const SEQUENCE = [
 ];
 
 function saveP1Pose(state) {
-    IMU_PROFILES.left[state] = { r: p1RawData.left.roll, p: p1RawData.left.pitch, y: p1RawData.left.yaw };
-    IMU_PROFILES.right[state] = { r: p1RawData.right.roll, p: p1RawData.right.pitch, y: p1RawData.right.yaw };
+    if (state === 'IDLE') {
+        IMU_PROFILES.left.IDLE = { r: 0, p: 0, y: 0, samples: [{ r: 0, p: 0, y: 0 }] };
+        IMU_PROFILES.right.IDLE = { r: 0, p: 0, y: 0, samples: [{ r: 0, p: 0, y: 0 }] };
+        p1IdleZero.left = { ...p1RawData.left };
+        p1IdleZero.right = { ...p1RawData.right };
+        console.log('✅ [P1 CALIBRATED - IDLE]', p1IdleZero);
+        return;
+    }
+
+    const now = performance.now();
+    const frames = p1SensorHistory.filter(frame => now - frame.time <= P1_POSE_CAPTURE_MS);
+    for (const side of ['left', 'right']) {
+        const samples = frames.map(frame => ({
+            r: parseFloat(wrapDiff(frame[side].roll, p1IdleZero[side].roll).toFixed(1)),
+            p: parseFloat(wrapDiff(frame[side].pitch, p1IdleZero[side].pitch).toFixed(1)),
+            y: parseFloat(wrapDiff(frame[side].yaw, p1IdleZero[side].yaw).toFixed(1))
+        }));
+
+
+        if (!samples.length) {
+            samples.push({
+                r: wrapDiff(p1RawData[side].roll, p1IdleZero[side].roll),
+                p: wrapDiff(p1RawData[side].pitch, p1IdleZero[side].pitch),
+                y: wrapDiff(p1RawData[side].yaw, p1IdleZero[side].yaw)
+            });
+        }
+
+        const mean = samples.reduce((sum, sample) => ({
+            r: sum.r + sample.r / samples.length,
+            p: sum.p + sample.p / samples.length,
+            y: sum.y + sample.y / samples.length
+        }), { r: 0, p: 0, y: 0 });
+        IMU_PROFILES[side][state] = {
+            r: parseFloat(mean.r.toFixed(1)),
+            p: parseFloat(mean.p.toFixed(1)),
+            y: parseFloat(mean.y.toFixed(1)),
+            samples
+        };
+    }
     console.log(`✅ [P1 CALIBRATED - ${state}]`, IMU_PROFILES.left[state], IMU_PROFILES.right[state]);
 }
+
+let p1IdleZero = {
+    left: { roll: 0, pitch: 0, yaw: 0 },
+    right: { roll: 0, pitch: 0, yaw: 0 }
+};
 
 async function startP1AutoCalibration() {
     gameScreen = 'calibrating';
@@ -69,7 +107,7 @@ async function startP1AutoCalibration() {
     for (let i = 0; i < SEQUENCE.length; i++) {
         const pose = SEQUENCE[i];
         title.textContent = pose.title;
-        desc.textContent = pose.desc;
+        desc.textContent = `${pose.desc} (เก็บตัวอย่างทุกเฟรมช่วงท้าย 2 วินาที)`;
         title.className = "text-4xl sm:text-5xl font-bold mb-4 text-[#f5c400]";
 
         for (let c = 3; c > 0; c--) {
@@ -91,34 +129,65 @@ async function startP1AutoCalibration() {
     overlay.classList.add('hidden');
 }
 
-// ================= INDEPENDENT STICK CLASSIFICATION =================
-function angleDiff(a, b) {
-    let diff = Math.abs(a - b) % 360;
-    return diff > 180 ? 360 - diff : diff;
+
+function wrapDiff(currentAngle, referenceAngle) {
+    let diff = (currentAngle - referenceAngle) % 360;
+    if (diff > 180) diff -= 360;
+    if (diff < -180) diff += 360;
+    return diff;
+}
+
+function getP1RelativeAngles(stickRaw, side) {
+    return {
+        r: wrapDiff(stickRaw.roll, p1IdleZero[side].roll),
+        p: wrapDiff(stickRaw.pitch, p1IdleZero[side].pitch),
+        y: wrapDiff(stickRaw.yaw, p1IdleZero[side].yaw)
+    };
+}
+
+function computeP1PoseScores(stickRaw, side) {
+    const cur = getP1RelativeAngles(stickRaw, side);
+    const scores = { LEFT: 0, RIGHT: 0, FORWARD: 0, BACKWARD: 0 };
+    const curMagnitude = Math.sqrt(cur.r ** 2 + cur.p ** 2 + (cur.y * P1_YAW_WEIGHT) ** 2);
+    if (curMagnitude < 5) return scores;
+
+    for (const state of Object.keys(scores)) {
+        const profile = IMU_PROFILES[side][state];
+        if (!profile) continue;
+
+        const samples = Array.isArray(profile.samples) && profile.samples.length ? profile.samples : [profile];
+        const distances = samples.map(sample => Math.sqrt(
+            wrapDiff(cur.r, sample.r) ** 2 +
+            wrapDiff(cur.p, sample.p) ** 2 +
+            (wrapDiff(cur.y, sample.y) * P1_YAW_WEIGHT) ** 2
+        )).sort((a, b) => a - b);
+        const nearest = distances.slice(0, Math.min(P1_PROFILE_NEIGHBORS, distances.length));
+        const nearestAverage = nearest.reduce((sum, distance) => sum + distance, 0) / nearest.length;
+        scores[state] = 1 / (1 + nearestAverage / P1_PROFILE_DISTANCE_SCALE);
+    }
+    return scores;
+}
+
+function resolveP1Pose(scores) {
+    const L = scores.LEFT || 0;
+    const R = scores.RIGHT || 0;
+    const F = scores.FORWARD || 0;
+    const B = scores.BACKWARD || 0;
+    const maxValue = Math.max(L, R, F, B);
+    if (maxValue < P1_TRIGGER_THRESHOLD) return 'IDLE';
+    if (B >= P1_TRIGGER_THRESHOLD && R >= P1_TRIGGER_THRESHOLD && B >= R * 0.70) return 'BACKWARD';
+    if (maxValue === F) return 'FORWARD';
+    if (maxValue === R) return 'RIGHT';
+    if (maxValue === L) return 'LEFT';
+    if (maxValue === B) return 'BACKWARD';
+    return 'IDLE';
 }
 
 function classifyP1Stick(stickRaw, side) {
-    let bestMatch = 'IDLE';
-    let minDistance = Infinity;
-
-    for (const [state, target] of Object.entries(IMU_PROFILES[side])) {
-        let dr = angleDiff(stickRaw.roll, target.r);
-        let dp = angleDiff(stickRaw.pitch, target.p);
-        let dy = angleDiff(stickRaw.yaw, target.y) * 0.5;
-
-        let dist = Math.sqrt(dr * dr + dp * dp + dy * dy);
-
-        if (state === 'IDLE') dist -= IDLE_BIAS;
-
-        if (dist < minDistance) {
-            minDistance = dist;
-            bestMatch = state;
-        }
-    }
-    return bestMatch;
+    return resolveP1Pose(computeP1PoseScores(stickRaw, side));
 }
 
-// เช็คว่าเชื่อมครบทั้งซ้ายและขวาหรือยัง ถ้าครบแล้วให้แสดงปุ่มลูกศรสีเหลืองด้านล่าง
+
 function checkBothSticksConnected() {
     const btnStickNext = document.getElementById('btnStickNext');
     if (leftStickConnected && rightStickConnected && btnStickNext) {
@@ -127,7 +196,7 @@ function checkBothSticksConnected() {
     }
 }
 
-// แปลงข้อมูล DataView ที่รับมาจาก BLE เป็น HEX String
+
 function dataViewToHexString(dataView) {
     const hexBytes = [];
     for (let i = 0; i < dataView.byteLength; i++) {
@@ -142,7 +211,7 @@ function dataViewToHexString(dataView) {
     return groupedWords.join(' ');
 }
 
-// แปลงข้อมูล DataView เป็น Array ของเลขทศนิยม Float32 (Little-Endian)
+
 function dataViewToFloatArray(dataView) {
     const floats = [];
     for (let i = 0; i + 4 <= dataView.byteLength; i += 4) {
@@ -151,7 +220,7 @@ function dataViewToFloatArray(dataView) {
     return floats;
 }
 
-// อัปเดตค่า IMU ของ P1 จาก DataView (12 ไบต์แรก = ไม้ขวา, 12 ไบต์หลัง = ไม้ซ้าย)
+
 function parseP1ImuDataView(dataView) {
     if (dataView.byteLength >= 24) {
         p1RawData.right.roll = dataView.getFloat32(0, true);
@@ -162,10 +231,18 @@ function parseP1ImuDataView(dataView) {
         p1RawData.left.pitch = dataView.getFloat32(16, true);
         p1RawData.left.yaw = dataView.getFloat32(20, true);
         p1ImuActive = true;
+
+        const now = performance.now();
+        p1SensorHistory.push({
+            time: now,
+            left: { ...p1RawData.left },
+            right: { ...p1RawData.right }
+        });
+        p1SensorHistory = p1SensorHistory.filter(frame => now - frame.time <= P1_SENSOR_HISTORY_MS);
     }
 }
 
-// ฟังก์ชัน Search ค้นหาและเชื่อมต่อ BLE สำหรับปุ่ม CONNECT ฝั่งซ้าย (P1)
+
 async function searchAndConnectLeftStickBLE() {
     const btnConnectLeft = document.getElementById('btnConnectLeft');
     const leftStickGraphic = document.getElementById('leftStickGraphic');
@@ -263,20 +340,20 @@ async function searchAndConnectLeftStickBLE() {
 }
 
 function setupInputListeners() {
-    // 0. ปุ่มในหน้า Stick Setup
+
     const btnConnectLeft = document.getElementById('btnConnectLeft');
     const btnConnectRight = document.getElementById('btnConnectRight');
     const rightStickGraphic = document.getElementById('rightStickGraphic');
     const btnStickNext = document.getElementById('btnStickNext');
 
-    // ปุ่มซ้าย (P1): กดเพื่อเชื่อมต่อ BLE กับ ESP32
+
     if (btnConnectLeft) {
         btnConnectLeft.addEventListener('click', () => {
             searchAndConnectLeftStickBLE();
         });
     }
 
-    // ปุ่มขวา (P2): Placeholder กดแล้วเปลี่ยนเป็นรูปไม้เชิดทันที
+
     if (btnConnectRight) {
         btnConnectRight.addEventListener('click', () => {
             rightStickConnected = true;
@@ -293,7 +370,7 @@ function setupInputListeners() {
         });
     }
 
-    // 1. ปุ่มในหน้า Start Menu
+
     document.getElementById('btnGameStart').addEventListener('click', () => {
         showCharSelectScreen();
     });
@@ -302,7 +379,7 @@ function setupInputListeners() {
         showTutorialScreen();
     });
 
-    // 2. หน้าเลือกตัวละคร (SELECT YOUR NANG) -> กดแล้วเริ่ม Calibrate P1 ทั้ง 5 ท่าก่อนเข้าเกม
+
     const charThumbChalawan = document.getElementById('charThumbChalawan');
     const charPreviewContainer = document.getElementById('charPreviewContainer');
 
@@ -318,12 +395,12 @@ function setupInputListeners() {
         });
     }
 
-    // 3. ปุ่มในหน้า Tutorial
+
     document.getElementById('btnBackToMenu').addEventListener('click', () => {
         showMenuScreen();
     });
 
-    // 4. ปุ่มคีย์บอร์ด
+
     window.addEventListener('keydown', (e) => {
         keys[e.key.toLowerCase()] = true;
         keys[e.key] = true;
@@ -385,7 +462,7 @@ function setupInputListeners() {
 function handlePlayerControls() {
     if (gameScreen !== 'playing') return;
 
-    // P1 HAND CONTROL (Q/E)
+
     if (keys['q'] || keys['Q']) {
         p1.handAimAngle = Math.max(HAND_MIN_ANGLE, p1.handAimAngle - HAND_CONTROL_SPEED);
     }
@@ -393,7 +470,7 @@ function handlePlayerControls() {
         p1.handAimAngle = Math.min(HAND_MAX_ANGLE, p1.handAimAngle + HAND_CONTROL_SPEED);
     }
 
-    // P2 HAND CONTROL (U/O หรือ ,/.)
+
     if (keys['u'] || keys['U'] || keys[','] || keys['<']) {
         p2.handAimAngle = Math.max(HAND_MIN_ANGLE, p2.handAimAngle - HAND_CONTROL_SPEED);
     }
@@ -401,14 +478,14 @@ function handlePlayerControls() {
         p2.handAimAngle = Math.min(HAND_MAX_ANGLE, p2.handAimAngle + HAND_CONTROL_SPEED);
     }
 
-    // P1 MOVEMENT (WASD + Independent Left/Right Stick IMU)
+
     let p1MoveX = 0, p1MoveY = 0;
     if (keys['w'] || keys['W']) p1MoveY -= MOVE_SPEED;
     if (keys['s'] || keys['S']) p1MoveY += MOVE_SPEED;
     if (keys['a'] || keys['A']) p1MoveX -= MOVE_SPEED;
     if (keys['d'] || keys['D']) p1MoveX += MOVE_SPEED;
 
-    // ประมวลผลท่าทาง P1 จากอัลกอริทึมแยกซ้าย-ขวาอิสระ
+
     if (leftStickConnected && p1ImuActive) {
         const lState = classifyP1Stick(p1RawData.left, 'left');
         const rState = classifyP1Stick(p1RawData.right, 'right');
@@ -426,16 +503,16 @@ function handlePlayerControls() {
             } else if (rState === "RIGHT") {
                 action = "💥 SLASH ATTACK!";
             } else {
-                // READY TO ATTACK is the debugger's neutral/IDLE state.
-                // Only the right-stick LEFT/RIGHT poses are attack actions;
-                // neutral, FORWARD, and BACKWARD on the right stick stay IDLE.
+
+
+
                 action = "IDLE";
             }
         }
 
-        // Require a pose to remain stable briefly before acting on it.
-        // This is especially useful for distinguishing a deliberate charge
-        // gesture from the transitional tilt on the way into a pose.
+
+
+
         const now = performance.now();
         if (action !== p1PendingAction) {
             p1PendingAction = action;
@@ -445,13 +522,13 @@ function handlePlayerControls() {
             action = p1PreviousAction;
         }
 
-        // เงื่อนไขดึงชาร์จแล้วปล่อยกลับท่าพัก -> ปล่อยโจมตี!
+
         let triggerReleaseAttack = false;
         if (p1PreviousAction === "⚔️ CHARGING PULL" && action === "IDLE") {
             triggerReleaseAttack = true;
         }
 
-        // แปลง Action เป็นการเคลื่อนที่และการฟันของ P1
+
         if (action === "MOVE LEFT") p1MoveX -= MOVE_SPEED;
         if (action === "MOVE RIGHT") p1MoveX += MOVE_SPEED;
         if (action === "MOVE UP (FORWARD)") p1MoveY -= MOVE_SPEED;
@@ -477,7 +554,7 @@ function handlePlayerControls() {
 
     updateMovementKinematics(p1, p1MoveX, p1MoveY);
 
-    // P2 MOVEMENT (Arrows or IJKL - Placeholder)
+
     let p2MoveX = 0, p2MoveY = 0;
     if (keys['ArrowUp'] || keys['i'] || keys['I']) p2MoveY -= MOVE_SPEED;
     if (keys['ArrowDown'] || keys['k'] || keys['K']) p2MoveY += MOVE_SPEED;
